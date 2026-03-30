@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import AdminInsert from './pages/AdminInsert';
 import AdminDashboard from './pages/AdminDashboard';
@@ -7,30 +7,24 @@ import AdminLogin from './pages/AdminLogin';
 import StoreList from './pages/StoreList';
 import { api } from './api';
 
-function AdminRoute({ children, isAdmin, onLogin }) {
-  if (!isAdmin) {
-    return <AdminLogin onLogin={onLogin} />;
-  }
-  return children;
-}
-
 function App() {
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [authRole, setAuthRole] = useState(null); // null, 'store', 'admin'
   const [checking, setChecking] = useState(true);
 
   const checkAuth = async () => {
-    const token = sessionStorage.getItem('admin_token');
+    const token = sessionStorage.getItem('auth_token');
     if (!token) {
-      setIsAdmin(false);
+      setAuthRole(null);
       setChecking(false);
       return;
     }
     try {
-      await api.checkAuth();
-      setIsAdmin(true);
+      const { role } = await api.checkAuth();
+      setAuthRole(role);
     } catch {
-      sessionStorage.removeItem('admin_token');
-      setIsAdmin(false);
+      sessionStorage.removeItem('auth_token');
+      sessionStorage.removeItem('auth_role');
+      setAuthRole(null);
     } finally {
       setChecking(false);
     }
@@ -40,19 +34,23 @@ function App() {
     checkAuth();
   }, []);
 
-  const handleLogin = () => {
-    setIsAdmin(true);
+  const handleLogin = (role) => {
+    setAuthRole(role);
   };
 
   const handleLogout = async () => {
     try { await api.logout(); } catch {}
-    sessionStorage.removeItem('admin_token');
-    setIsAdmin(false);
+    sessionStorage.removeItem('auth_token');
+    sessionStorage.removeItem('auth_role');
+    setAuthRole(null);
   };
+
+  const isAdmin = authRole === 'admin';
+  const isStore = authRole === 'store' || authRole === 'admin';
 
   return (
     <div className="app">
-      <Navbar isAdmin={isAdmin} onLogout={handleLogout} />
+      <Navbar isAdmin={isAdmin} isStore={isStore} onLogout={handleLogout} />
       <main className="main-content">
         {checking ? (
           <p className="loading-text">Chargement...</p>
@@ -60,16 +58,14 @@ function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/magasin/liste" replace />} />
             <Route path="/admin/saisie" element={
-              <AdminRoute isAdmin={isAdmin} onLogin={handleLogin}>
-                <AdminInsert />
-              </AdminRoute>
+              isAdmin ? <AdminInsert /> : <AdminLogin onLogin={handleLogin} role="admin" />
             } />
             <Route path="/admin/tableau-de-bord" element={
-              <AdminRoute isAdmin={isAdmin} onLogin={handleLogin}>
-                <AdminDashboard />
-              </AdminRoute>
+              isAdmin ? <AdminDashboard /> : <AdminLogin onLogin={handleLogin} role="admin" />
             } />
-            <Route path="/magasin/liste" element={<StoreList />} />
+            <Route path="/magasin/liste" element={
+              isStore ? <StoreList /> : <AdminLogin onLogin={handleLogin} role="store" />
+            } />
             <Route path="/magasin/scanner" element={<Navigate to="/magasin/liste" replace />} />
           </Routes>
         )}

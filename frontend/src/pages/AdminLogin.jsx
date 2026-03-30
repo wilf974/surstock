@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { api } from '../api';
 
-function AdminLogin({ onLogin }) {
+function AdminLogin({ onLogin, role = 'admin' }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const isStore = role === 'store';
+  const title = isStore ? 'Maison Blanche' : 'Administration';
+  const placeholder = isStore ? 'Entrez le mot de passe magasin' : 'Entrez le mot de passe admin';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,9 +23,10 @@ function AdminLogin({ onLogin }) {
       const hashBuffer = await crypto.subtle.digest('SHA-256', data);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      const { token } = await api.login(hashHex);
-      sessionStorage.setItem('admin_token', token);
-      onLogin();
+      const { token } = await api.login(hashHex, role);
+      sessionStorage.setItem('auth_token', token);
+      sessionStorage.setItem('auth_role', role);
+      onLogin(role);
     } catch (err) {
       setError('Mot de passe incorrect');
     } finally {
@@ -32,7 +37,7 @@ function AdminLogin({ onLogin }) {
   return (
     <div className="page admin-login">
       <div className="login-card">
-        <div className="login-header">Administration</div>
+        <div className="login-header">{title}</div>
         <form onSubmit={handleSubmit} className="login-form">
           {error && <div className="alert alert-error">{error}</div>}
           <div className="form-group">
@@ -41,7 +46,7 @@ function AdminLogin({ onLogin }) {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Entrez le mot de passe admin"
+              placeholder={placeholder}
               autoFocus
             />
           </div>

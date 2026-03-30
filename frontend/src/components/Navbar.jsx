@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 
-function Navbar({ isAdmin, onLogout }) {
+function Navbar({ isAdmin, isStore, onLogout }) {
   return (
     <nav className="navbar">
       <div className="navbar-brand">
@@ -22,12 +22,12 @@ function Navbar({ isAdmin, onLogout }) {
           <NavLink to="/admin/tableau-de-bord" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             Tableau de bord
           </NavLink>
-          {isAdmin && (
-            <button className="btn btn-logout" onClick={onLogout}>
-              Déconnexion
-            </button>
-          )}
         </div>
+        {(isAdmin || isStore) && (
+          <button className="btn btn-logout" onClick={onLogout}>
+            Déconnexion
+          </button>
+        )}
       </div>
     </nav>
   );

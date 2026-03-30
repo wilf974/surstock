@@ -1,7 +1,7 @@
 const API_BASE = '/api';
 
 function getToken() {
-  return sessionStorage.getItem('admin_token');
+  return sessionStorage.getItem('auth_token');
 }
 
 async function request(url, options = {}) {
@@ -22,7 +22,7 @@ async function request(url, options = {}) {
 
 export const api = {
   // Auth
-  login: (password) => request('/auth/login', { method: 'POST', body: JSON.stringify({ password }) }),
+  login: (password, role = 'admin') => request('/auth/login', { method: 'POST', body: JSON.stringify({ password, role }) }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   checkAuth: () => request('/auth/check'),
 
