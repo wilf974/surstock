@@ -1,0 +1,26 @@
+services:
+  surstock:
+    build: .
+    container_name: surstock
+    expose:
+      - "3001"
+    environment:
+      - DB_DIR=/app/backend/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.surstock.rule=Host(`sur-stock.myorigines.tech`)"
+      - "traefik.http.routers.surstock.entrypoints=websecure"
+      - "traefik.http.routers.surstock.tls.certresolver=letsencrypt"
+      - "traefik.http.services.surstock.loadbalancer.server.port=3001"
+    volumes:
+      - surstock-data:/app/backend/data
+    restart: unless-stopped
+    networks:
+      - myorigines-network
+
+volumes:
+  surstock-data:
+
+networks:
+  myorigines-network:
+    external: true
