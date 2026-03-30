@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 function AdminInsert() {
   const [ean, setEan] = useState('');
   const [parkod, setParkod] = useState('');
+  const [marque, setMarque] = useState('');
   const [label, setLabel] = useState('');
   const [qtyRequested, setQtyRequested] = useState('');
   const [products, setProducts] = useState([]);
@@ -39,10 +40,12 @@ function AdminInsert() {
     }
 
     try {
-      await api.addProduct({ ean: ean.trim(), parkod: parkod.trim() || null, label: label.trim(), qty_requested: parseInt(qtyRequested) });
-      showMsg(`Produit "${label}" ajouté`);
+      const fullLabel = marque.trim() ? `${marque.trim()} - ${label.trim()}` : label.trim();
+      await api.addProduct({ ean: ean.trim(), parkod: parkod.trim() || null, label: fullLabel, qty_requested: parseInt(qtyRequested) });
+      showMsg(`Produit "${fullLabel}" ajouté`);
       setEan('');
       setParkod('');
+      setMarque('');
       setLabel('');
       setQtyRequested('');
       loadProducts();
@@ -184,6 +187,10 @@ function AdminInsert() {
           <div className="form-group">
             <label>PARKOD</label>
             <input type="text" value={parkod} onChange={(e) => setParkod(e.target.value)} placeholder="Code PARKOD" />
+          </div>
+          <div className="form-group">
+            <label>Marque</label>
+            <input type="text" value={marque} onChange={(e) => setMarque(e.target.value)} placeholder="ARMANI" />
           </div>
           <div className="form-group">
             <label>Libellé</label>
