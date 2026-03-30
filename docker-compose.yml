@@ -7,7 +7,7 @@ services:
     environment:
       - DB_DIR=/app/backend/data
       - ADMIN_PASSWORD_HASH=21a7d2207af0e4b7f595e85eff6861732df082461584b89f6c68bbfaacb67f59
-      - STORE_PASSWORD_HASH=add9d8e85ec12c577abcbed5a6080bb4804add72766f898d200951333b58552c
+      - STORE_PASSWORD_HASH=0edee08b977a54e851813d6bcedd30d9912f699ae3c5fe422a968cc171c83c15
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.surstock.rule=Host(`sur-stock.myorigines.tech`)"
