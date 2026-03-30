@@ -105,13 +105,26 @@ function AdminInsert() {
 
     const items = [];
     for (const row of rows) {
-      if (!row[0] || row.length < 4) continue;
-      items.push({
-        ean: String(row[0]).trim(),
-        parkod: row[1] ? String(row[1]).trim() : null,
-        label: String(row[2]).trim(),
-        qty_requested: parseInt(row[3]) || 0,
-      });
+      if (!row[0]) continue;
+      if (row.length >= 5) {
+        // Format 5 colonnes : EAN, PARKOD, Marque, Libellé, Quantité
+        const marque = row[2] ? String(row[2]).trim() : '';
+        const libelle = row[3] ? String(row[3]).trim() : '';
+        items.push({
+          ean: String(row[0]).trim(),
+          parkod: row[1] ? String(row[1]).trim() : null,
+          label: marque ? `${marque} - ${libelle}` : libelle,
+          qty_requested: parseInt(row[4]) || 0,
+        });
+      } else if (row.length >= 4) {
+        // Format 4 colonnes : EAN, PARKOD, Libellé, Quantité
+        items.push({
+          ean: String(row[0]).trim(),
+          parkod: row[1] ? String(row[1]).trim() : null,
+          label: String(row[2]).trim(),
+          qty_requested: parseInt(row[3]) || 0,
+        });
+      }
     }
 
     if (items.length === 0) {
