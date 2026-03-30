@@ -56,9 +56,10 @@ router.post('/', (req, res) => {
     return res.status(400).json({ error: 'EAN, libellé et quantité sont requis' });
   }
 
+  const qty = parseInt(qty_requested);
   const result = run(
-    'INSERT INTO products (ean, parkod, label, qty_requested) VALUES (?, ?, ?, ?)',
-    [ean.trim(), parkod ? parkod.trim() : null, label.trim(), parseInt(qty_requested)]
+    'INSERT INTO products (ean, parkod, label, qty_requested, qty_sent, scanned_at) VALUES (?, ?, ?, ?, ?, ?)',
+    [ean.trim(), parkod ? parkod.trim() : null, label.trim(), qty, qty === 0 ? 0 : null, qty === 0 ? new Date().toISOString() : null]
   );
 
   const product = queryOne('SELECT * FROM products WHERE id = ?', [result.lastInsertRowid]);
@@ -76,9 +77,10 @@ router.post('/bulk', (req, res) => {
   let inserted = 0;
   for (const item of products) {
     if (!item.ean || !item.label || item.qty_requested === undefined) continue;
+    const qty = parseInt(item.qty_requested);
     run(
-      'INSERT INTO products (ean, parkod, label, qty_requested) VALUES (?, ?, ?, ?)',
-      [item.ean.trim(), item.parkod ? item.parkod.trim() : null, item.label.trim(), parseInt(item.qty_requested)]
+      'INSERT INTO products (ean, parkod, label, qty_requested, qty_sent, scanned_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [item.ean.trim(), item.parkod ? item.parkod.trim() : null, item.label.trim(), qty, qty === 0 ? 0 : null, qty === 0 ? new Date().toISOString() : null]
     );
     inserted++;
   }
