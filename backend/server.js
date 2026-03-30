@@ -40,7 +40,7 @@ const loginLimiter = rateLimit({
   message: { error: 'Trop de tentatives, réessayez dans 15 minutes' }
 });
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // Servir le frontend en production
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
