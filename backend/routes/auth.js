@@ -2,8 +2,8 @@ const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
 
-// Hash SHA-256 du mot de passe admin (jamais stocké en clair)
-const ADMIN_PASSWORD_HASH = crypto.createHash('sha256').update('@dm1n1str@t3uR!)').digest('hex');
+// Hash SHA-256 du mot de passe admin (via variable d'environnement ou hash pré-calculé)
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || 'a]m!n_h@sh_n0t_s3t';
 
 // Tokens actifs en mémoire (simple pour ce projet)
 const activeTokens = new Set();

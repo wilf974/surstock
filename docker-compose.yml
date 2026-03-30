@@ -6,6 +6,7 @@ services:
       - "3001"
     environment:
       - DB_DIR=/app/backend/data
+      - ADMIN_PASSWORD_HASH=21a7d2207af0e4b7f595e85eff6861732df082461584b89f6c68bbfaacb67f59
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.surstock.rule=Host(`sur-stock.myorigines.tech`)"

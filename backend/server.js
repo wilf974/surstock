@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const { getDb } = require('./db');
 
@@ -11,14 +13,40 @@ const { router: authRoutes, requireAdmin } = require('./routes/auth');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middlewares
-app.use(cors());
+// Sécurité : headers HTTP
+app.use(helmet({
+  contentSecurityPolicy: false // désactivé pour ne pas bloquer le frontend SPA
+}));
+
+// CORS : uniquement le domaine autorisé
+const allowedOrigins = [
+  'https://sur-stock.myorigines.tech',
+  'http://localhost:5173'
+];
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS non autorisé'));
+    }
+  }
+}));
+
+// Rate limiting sur le login (anti brute force)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // max 10 tentatives par IP
+  message: { error: 'Trop de tentatives, réessayez dans 15 minutes' }
+});
+
 app.use(express.json());
 
 // Servir le frontend en production
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 // Routes API
+app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', authRoutes);
 // Products : GET public (magasin), POST/DELETE protégés (admin)
 app.use('/api/products', (req, res, next) => {
