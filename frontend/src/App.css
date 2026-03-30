@@ -567,6 +567,12 @@ tr.diff-pending {
   margin-bottom: 24px;
 }
 
+.bulk-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .bulk-form {
   background: white;
   padding: 20px;

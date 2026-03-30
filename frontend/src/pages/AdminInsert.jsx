@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
+import * as XLSX from 'xlsx';
 
 function AdminInsert() {
   const [ean, setEan] = useState('');
@@ -10,6 +11,7 @@ function AdminInsert() {
   const [message, setMessage] = useState(null);
   const [bulkText, setBulkText] = useState('');
   const [showBulk, setShowBulk] = useState(false);
+  const fileInputRef = useRef(null);
 
   const loadProducts = async () => {
     try {
@@ -92,6 +94,42 @@ function AdminInsert() {
     }
   };
 
+  const handleXlsxImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
+
+    const items = [];
+    for (const row of rows) {
+      if (!row[0] || row.length < 4) continue;
+      items.push({
+        ean: String(row[0]).trim(),
+        parkod: row[1] ? String(row[1]).trim() : null,
+        label: String(row[2]).trim(),
+        qty_requested: parseInt(row[3]) || 0,
+      });
+    }
+
+    if (items.length === 0) {
+      showMsg('Aucun produit valide trouvé dans le fichier', 'error');
+      fileInputRef.current.value = '';
+      return;
+    }
+
+    try {
+      const result = await api.addProductsBulk(items);
+      showMsg(`${result.inserted} produit(s) importé(s) depuis le fichier XLSX`);
+      loadProducts();
+    } catch (err) {
+      showMsg('Erreur lors de l\'import XLSX', 'error');
+    }
+    fileInputRef.current.value = '';
+  };
+
   const handleDelete = async (id) => {
     if (!window.confirm('Supprimer ce produit ?')) return;
     try {
@@ -148,9 +186,15 @@ function AdminInsert() {
 
       {/* Import en masse */}
       <div className="bulk-section">
-        <button className="btn btn-secondary" onClick={() => setShowBulk(!showBulk)}>
-          {showBulk ? 'Masquer l\'import en masse' : 'Import en masse (copier/coller)'}
-        </button>
+        <div className="bulk-buttons">
+          <button className="btn btn-secondary" onClick={() => setShowBulk(!showBulk)}>
+            {showBulk ? 'Masquer l\'import en masse' : 'Import en masse (copier/coller)'}
+          </button>
+          <label className="btn btn-success">
+            Import fichier XLSX
+            <input type="file" accept=".xlsx,.xls" ref={fileInputRef} onChange={handleXlsxImport} style={{ display: 'none' }} />
+          </label>
+        </div>
 
         {showBulk && (
           <div className="bulk-form">
