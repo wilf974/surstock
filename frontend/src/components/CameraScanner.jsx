@@ -23,22 +23,12 @@ function CameraScanner({ onScan, onClose }) {
         const html5Qrcode = new Html5Qrcode('camera-reader');
         scannerRef.current = html5Qrcode;
 
-        // Config avec autofocus continu
-        const videoConstraints = {
-          facingMode: 'environment',
-          advanced: [{ focusMode: 'continuous' }],
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        };
-
         await html5Qrcode.start(
-          videoConstraints,
+          { facingMode: 'environment' },
           {
             fps: 15,
             qrbox: { width: 280, height: 100 },
-            aspectRatio: 1.0,
-            formatsToSupport: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-            experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+            formatsToSupport: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
           },
           (decodedText) => {
             if (scannedRef.current) return;
@@ -50,19 +40,21 @@ function CameraScanner({ onScan, onClose }) {
           () => {}
         );
 
-        // Forcer l'autofocus après le démarrage
-        try {
-          const videoElement = document.querySelector('#camera-reader video');
-          if (videoElement && videoElement.srcObject) {
-            const track = videoElement.srcObject.getVideoTracks()[0];
-            const capabilities = track.getCapabilities?.();
-            if (capabilities?.focusMode?.includes('continuous')) {
-              await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+        // Activer l'autofocus continu après le démarrage
+        setTimeout(() => {
+          try {
+            const video = document.querySelector('#camera-reader video');
+            if (video && video.srcObject) {
+              const track = video.srcObject.getVideoTracks()[0];
+              if (track) {
+                const caps = track.getCapabilities?.();
+                if (caps && caps.focusMode && caps.focusMode.includes('continuous')) {
+                  track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+                }
+              }
             }
-          }
-        } catch (e) {
-          // Pas grave si l'autofocus ne passe pas
-        }
+          } catch (e) { /* ignore */ }
+        }, 500);
 
       } catch (err) {
         console.error('Erreur caméra:', err);
