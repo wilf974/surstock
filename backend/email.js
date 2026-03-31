@@ -74,10 +74,17 @@ async function sendDepotNotification(product) {
 
     const transport = createTransport(smtp);
 
-    const hasDiscrepancy = product.qty_received !== product.qty_sent;
-    const subject = hasDiscrepancy
-      ? `Surstock - ECART reception : ${product.label}`
-      : `Surstock - Reception complete : ${product.label}`;
+    const isComplete = product.qty_received >= product.qty_sent;
+    const hasDiscrepancy = isComplete && product.qty_received !== product.qty_sent;
+
+    let subject;
+    if (!isComplete) {
+      subject = `Surstock - Scan depot ${product.qty_received}/${product.qty_sent} : ${product.label}`;
+    } else if (hasDiscrepancy) {
+      subject = `Surstock - ECART reception : ${product.label}`;
+    } else {
+      subject = `Surstock - Reception complete : ${product.label}`;
+    }
 
     await transport.sendMail({
       from: smtp.from || smtp.user,

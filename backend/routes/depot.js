@@ -59,10 +59,9 @@ router.patch('/:id/scan', async (req, res) => {
 
   const updated = queryOne('SELECT * FROM products WHERE id = ?', [parseInt(id)]);
 
-  // Si la réception est complète ou en écart, envoyer notification
-  if (newReceived >= product.qty_sent) {
-    sendDepotNotification(updated).catch(() => {});
-  }
+  // Envoyer notification à chaque scan
+  console.log(`Depot scan: ${updated.label} - reçu ${newReceived}/${product.qty_sent}`);
+  sendDepotNotification(updated).catch(err => console.error('Email error:', err.message));
 
   res.json(updated);
 });
