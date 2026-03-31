@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { Html5Qrcode } from 'html5-qrcode';
 import { api } from '../api';
 
 // ──────────────────────────────────────────────
@@ -147,6 +148,50 @@ const ProductCard = memo(function ProductCard({ p, onZero }) {
 });
 
 // ──────────────────────────────────────────────
+// Scanner caméra mobile
+// ──────────────────────────────────────────────
+function CameraScanner({ onScan, onClose }) {
+  const scannerRef = useRef(null);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const scannerId = 'camera-scanner-region';
+    const html5Qrcode = new Html5Qrcode(scannerId);
+    scannerRef.current = html5Qrcode;
+
+    html5Qrcode.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 280, height: 120 }, aspectRatio: 1.0 },
+      (decodedText) => {
+        html5Qrcode.stop().catch(() => {});
+        onScan(decodedText);
+      },
+      () => {}
+    ).catch((err) => {
+      console.error('Erreur caméra:', err);
+      onClose();
+    });
+
+    return () => {
+      html5Qrcode.stop().catch(() => {});
+    };
+  }, []);
+
+  return createPortal(
+    <div className="camera-overlay">
+      <div className="camera-container">
+        <div className="camera-header">
+          <span>Scanner un code-barres</span>
+          <button className="btn btn-secondary btn-small" onClick={onClose}>Fermer</button>
+        </div>
+        <div id="camera-scanner-region" className="camera-viewport"></div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ──────────────────────────────────────────────
 // Composant principal
 // ──────────────────────────────────────────────
 const PAGE_SIZE = 100;
@@ -160,6 +205,7 @@ function StoreList() {
   const [qtySent, setQtySent] = useState('');
   const [message, setMessage] = useState(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const qtyInputRef = useRef(null);
   const scanBufferRef = useRef('');
   const scanTimeoutRef = useRef(null);
@@ -301,7 +347,19 @@ function StoreList() {
       )}
 
       {!scannedProduct && !scanBuffer && (
-        <div className="scan-ready">Prêt à scanner — bippez un produit</div>
+        <div className="scan-ready">
+          Prêt à scanner — bippez un produit
+          <button className="btn btn-primary camera-btn" onClick={() => setCameraOpen(true)}>
+            Scanner avec la caméra
+          </button>
+        </div>
+      )}
+
+      {cameraOpen && (
+        <CameraScanner
+          onScan={(code) => { setCameraOpen(false); processScannedCode(code); }}
+          onClose={() => setCameraOpen(false)}
+        />
       )}
 
       {/* Modale scan */}

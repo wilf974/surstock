@@ -392,6 +392,51 @@ tr.diff-pending { background: var(--gray-50) !important; }
 }
 
 /* ============================================
+   CAMERA SCANNER
+   ============================================ */
+.camera-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-container {
+  width: 100%;
+  max-width: 500px;
+  padding: 16px;
+}
+
+.camera-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--white);
+  margin-bottom: 12px;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.camera-viewport {
+  width: 100%;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.camera-viewport video {
+  width: 100% !important;
+  border-radius: var(--radius);
+}
+
+.camera-btn {
+  margin-top: 12px;
+  width: 100%;
+}
+
+/* ============================================
    SUMMARY CARDS
    ============================================ */
 .summary-cards {
@@ -501,6 +546,10 @@ tr.diff-pending { background: var(--gray-50) !important; }
   text-align: center;
   border: 2px solid var(--green);
   animation: pulse 2.5s ease-in-out infinite;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
 }
 
 @keyframes pulse {
