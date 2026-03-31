@@ -74,6 +74,8 @@ function DepotList() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [manualEan, setManualEan] = useState('');
+  const manualInputRef = useRef(null);
   const scanBufferRef = useRef('');
   const scanTimeoutRef = useRef(null);
   const productsRef = useRef(products);
@@ -205,10 +207,19 @@ function DepotList() {
 
       {!scanBuffer && !scanning && (
         <div className="scan-ready">
-          {scanning ? 'Enregistrement...' : 'Prêt à scanner — bippez chaque produit un par un'}
-          <button className="btn btn-primary camera-btn" onClick={() => setCameraOpen(true)}>
-            Scanner avec la caméra
-          </button>
+          Prêt à scanner — bippez chaque produit un par un
+          <div className="manual-scan-row">
+            <form onSubmit={(e) => { e.preventDefault(); if (manualEan.trim()) { processScannedCode(manualEan.trim()); setManualEan(''); manualInputRef.current?.blur(); } }} className="manual-scan-form">
+              <input ref={manualInputRef} type="text" inputMode="numeric" autoComplete="off"
+                value={manualEan} onChange={(e) => setManualEan(e.target.value)}
+                placeholder="Saisie manuelle EAN / PARKOD"
+                className="manual-scan-input" />
+              <button type="submit" className="btn btn-primary" disabled={!manualEan.trim()}>OK</button>
+            </form>
+            <button className="btn btn-primary camera-btn" onClick={() => setCameraOpen(true)}>
+              Scanner avec la caméra
+            </button>
+          </div>
         </div>
       )}
 
