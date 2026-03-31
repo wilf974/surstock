@@ -698,8 +698,39 @@ tr.row-status-depot-discrepancy { cursor: help; }
 }
 
 .camera-btn {
+  width: 100%;
+}
+
+.manual-scan-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin-top: 12px;
   width: 100%;
+  max-width: 400px;
+}
+
+.manual-scan-form {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.manual-scan-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid var(--gray-200);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: var(--mono);
+  outline: none;
+  min-height: 44px;
+  transition: var(--transition);
+}
+
+.manual-scan-input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(45,125,210,0.12);
 }
 
 /* ============================================
