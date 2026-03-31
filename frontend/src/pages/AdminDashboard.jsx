@@ -6,6 +6,7 @@ function AdminDashboard() {
   const [summary, setSummary] = useState(null);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState(null);
 
   const loadSummary = async () => {
     setLoading(true);
@@ -45,6 +46,19 @@ function AdminDashboard() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Export');
     XLSX.writeFile(wb, 'export_parkod_quantite.xlsx');
+  };
+
+  const handleReset = async (product) => {
+    if (!window.confirm(`Remettre "${product.label}" en attente ?`)) return;
+    try {
+      await api.resetScan(product.id);
+      setMessage({ text: `${product.label} remis en attente`, type: 'success' });
+      setTimeout(() => setMessage(null), 3000);
+      loadSummary();
+    } catch (err) {
+      setMessage({ text: 'Erreur lors de l\'annulation', type: 'error' });
+      setTimeout(() => setMessage(null), 3000);
+    }
   };
 
   const getDiffClass = (product) => {
@@ -98,6 +112,8 @@ function AdminDashboard() {
         </strong></span>
       </div>
 
+      {message && <div className={`alert alert-${message.type}`}>{message.text}</div>}
+
       <div className="filter-bar">
         <input type="text" placeholder="Rechercher par EAN, PARKOD ou libellé..."
           value={search} onChange={(e) => setSearch(e.target.value)} className="search-input" />
@@ -116,6 +132,7 @@ function AdminDashboard() {
             <th>Envoyée</th>
             <th>Écart</th>
             <th>Scanné le</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -129,6 +146,11 @@ function AdminDashboard() {
               <td className="qty-cell diff-cell"><strong>{getDiffText(p)}</strong></td>
               <td className="date-cell">
                 {p.scanned_at ? new Date(p.scanned_at).toLocaleString('fr-FR') : '—'}
+              </td>
+              <td>
+                {p.qty_sent !== null && (
+                  <button className="btn btn-secondary btn-small" onClick={() => handleReset(p)}>Annuler</button>
+                )}
               </td>
             </tr>
           ))}
@@ -160,6 +182,13 @@ function AdminDashboard() {
                 <span className="card-item-value" style={{ fontSize: 12 }}>
                   {new Date(p.scanned_at).toLocaleString('fr-FR')}
                 </span>
+              </div>
+            )}
+            {p.qty_sent !== null && (
+              <div className="card-item-actions">
+                <button className="btn btn-secondary btn-small" onClick={() => handleReset(p)} style={{ width: '100%' }}>
+                  Annuler la validation
+                </button>
               </div>
             )}
           </div>

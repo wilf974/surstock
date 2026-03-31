@@ -53,6 +53,7 @@ app.use('/api/products', (req, res, next) => {
   if (req.method === 'GET') return requireStore(req, res, next);
   requireAdmin(req, res, next);
 }, productsRoutes);
+app.use('/api/scan/:id/reset', requireAdmin);
 app.use('/api/scan', requireStore, scanRoutes);
 app.use('/api/dashboard', requireAdmin, dashboardRoutes);
 
