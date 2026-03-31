@@ -27,15 +27,21 @@ function AdminDashboard() {
     return <div className="page"><p className="loading-text">Chargement...</p></div>;
   }
 
-  const brands = [...new Set(summary.products.map(p => p.label.split(' - ')[0]?.trim()).filter(Boolean))].sort();
+  const brands = [...new Set(summary.products.map(p => {
+    const parts = p.label.split(' - ');
+    return parts.length >= 2 ? parts[1].trim() : parts[0].trim();
+  }).filter(Boolean))].sort();
 
   const filteredProducts = summary.products.filter(p => {
     const matchSearch = !search ||
       p.ean.toLowerCase().includes(search.toLowerCase()) ||
       (p.parkod && p.parkod.toLowerCase().includes(search.toLowerCase())) ||
       p.label.toLowerCase().includes(search.toLowerCase());
-    const matchBrand = !brandFilter || p.label.startsWith(brandFilter + ' - ') || p.label === brandFilter;
-    return matchSearch && matchBrand;
+    if (!matchSearch) return false;
+    if (!brandFilter) return true;
+    const parts = p.label.split(' - ');
+    const name = parts.length >= 2 ? parts[1].trim() : parts[0].trim();
+    return name === brandFilter;
   });
 
   const exportXlsx = () => {

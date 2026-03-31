@@ -327,15 +327,20 @@ function StoreList() {
   const brands = useMemo(() => {
     const set = new Set();
     products.forEach(p => {
-      const m = p.label.split(' - ')[0]?.trim();
-      if (m) set.add(m);
+      const parts = p.label.split(' - ');
+      const name = parts.length >= 2 ? parts[1].trim() : parts[0].trim();
+      if (name) set.add(name);
     });
     return [...set].sort();
   }, [products]);
 
   const filteredProducts = useMemo(() => {
     if (!brandFilter) return products;
-    return products.filter(p => p.label.startsWith(brandFilter + ' - ') || p.label === brandFilter);
+    return products.filter(p => {
+      const parts = p.label.split(' - ');
+      const name = parts.length >= 2 ? parts[1].trim() : parts[0].trim();
+      return name === brandFilter;
+    });
   }, [products, brandFilter]);
 
   const confirmed = useMemo(() => filteredProducts.filter(p => p.qty_sent !== null).length, [filteredProducts]);
