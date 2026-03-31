@@ -11,10 +11,17 @@ const ZeroModal = forwardRef(function ZeroModal({ onConfirmed, onMessage }, ref)
     open(p) {
       setProduct(p);
       setCode('');
-      setTimeout(() => inputRef.current?.focus(), 50);
     },
     isOpen() { return !!product; }
   }));
+
+  useEffect(() => {
+    if (product) {
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+    }
+  }, [product]);
 
   if (!product) return null;
 
@@ -48,9 +55,9 @@ const ZeroModal = forwardRef(function ZeroModal({ onConfirmed, onMessage }, ref)
           <form onSubmit={handleSubmit} className="confirm-form">
             <label className="confirm-label">
               Code de validation
-              <input ref={inputRef} type="text" value={code}
-                onChange={(e) => setCode(e.target.value)} placeholder="Entrez le code"
-                className="qty-input" />
+              <input ref={inputRef} type="text" inputMode="numeric" autoComplete="off"
+                value={code} onChange={(e) => setCode(e.target.value)}
+                placeholder="Entrez le code" className="qty-input" />
             </label>
             <div className="confirm-buttons">
               <button type="submit" className="btn btn-danger btn-large">Valider à 0</button>
