@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { queryOne, run } = require('../db');
+const { addNotification } = require('./notifications');
 
 // PATCH /api/scan/:id/confirm - Confirmer la quantité envoyée
 router.patch('/:id/confirm', (req, res) => {
@@ -23,6 +24,21 @@ router.patch('/:id/confirm', (req, res) => {
   );
 
   const updated = queryOne('SELECT * FROM products WHERE id = ?', [parseInt(id)]);
+
+  // Notification in-app
+  const diff = parseInt(qty_sent) - updated.qty_requested;
+  if (diff !== 0) {
+    addNotification(
+      `Magasin: ${updated.label} — envoyé ${qty_sent} / demandé ${updated.qty_requested} (écart ${diff > 0 ? '+' : ''}${diff})`,
+      'warning'
+    );
+  } else {
+    addNotification(
+      `Magasin: ${updated.label} — confirmé ${qty_sent} (OK)`,
+      'info'
+    );
+  }
+
   res.json(updated);
 });
 
