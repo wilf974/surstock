@@ -762,6 +762,12 @@ tr.diff-pending { background: var(--gray-50) !important; }
   letter-spacing: 0.8px;
 }
 
+.form-group select {
+  appearance: auto;
+  cursor: pointer;
+  background: var(--white);
+}
+
 .form-group input,
 .form-group select {
   width: 100%;

@@ -2,15 +2,21 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 
 function AdminSettings() {
-  const [smtp, setSmtp] = useState({ host: 'smtp.office365.com', port: '587', user: '', password: '', from: '', to: '' });
+  const [smtp, setSmtp] = useState({
+    host: 'smtp.office365.com',
+    port: '587',
+    encryption: 'STARTTLS',
+    user: '',
+    password: '',
+    from: '',
+    to: ''
+  });
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
+  useEffect(() => { loadSettings(); }, []);
 
   const loadSettings = async () => {
     try {
@@ -18,6 +24,7 @@ function AdminSettings() {
       setSmtp(prev => ({
         host: data.host || prev.host,
         port: data.port || prev.port,
+        encryption: data.encryption || prev.encryption,
         user: data.user || '',
         password: data.password === '****' ? '****' : '',
         from: data.from || '',
@@ -32,7 +39,7 @@ function AdminSettings() {
 
   const showMsg = (text, type = 'success') => {
     setMessage({ text, type });
-    setTimeout(() => setMessage(null), 4000);
+    setTimeout(() => setMessage(null), 5000);
   };
 
   const handleSave = async (e) => {
@@ -76,24 +83,34 @@ function AdminSettings() {
         <h2 style={{ marginBottom: 16, fontSize: 18 }}>Configuration SMTP (notifications email)</h2>
 
         <div className="form-row">
-          <div className="form-group">
+          <div className="form-group" style={{ flex: 2 }}>
             <label>Serveur SMTP</label>
             <input type="text" value={smtp.host} onChange={update('host')} placeholder="smtp.office365.com" />
           </div>
-          <div className="form-group">
+          <div className="form-group" style={{ flex: 1 }}>
             <label>Port</label>
-            <input type="text" value={smtp.port} onChange={update('port')} placeholder="587" />
+            <input type="number" value={smtp.port} onChange={update('port')} placeholder="587" />
+          </div>
+          <div className="form-group" style={{ flex: 1 }}>
+            <label>Chiffrement</label>
+            <select value={smtp.encryption} onChange={update('encryption')}>
+              <option value="STARTTLS">STARTTLS</option>
+              <option value="SSL">SSL/TLS</option>
+              <option value="NONE">Aucun</option>
+            </select>
           </div>
         </div>
 
         <div className="form-row">
           <div className="form-group">
-            <label>Utilisateur</label>
-            <input type="email" value={smtp.user} onChange={update('user')} placeholder="user@myorigines.com" />
+            <label>Identifiant SMTP</label>
+            <input type="text" value={smtp.user} onChange={update('user')} placeholder="user@myorigines.com" />
           </div>
           <div className="form-group">
-            <label>Mot de passe</label>
-            <input type="password" value={smtp.password} onChange={update('password')} placeholder="Mot de passe SMTP" />
+            <label>Mot de passe SMTP</label>
+            <input type="password" value={smtp.password} onChange={update('password')}
+              onFocus={(e) => { if (e.target.value === '****') setSmtp(prev => ({ ...prev, password: '' })); }}
+              placeholder="Mot de passe" />
           </div>
         </div>
 
@@ -104,7 +121,7 @@ function AdminSettings() {
           </div>
           <div className="form-group">
             <label>Destinataire (To)</label>
-            <input type="email" value={smtp.to} onChange={update('to')} placeholder="admin@myorigines.com" />
+            <input type="text" value={smtp.to} onChange={update('to')} placeholder="admin@myorigines.com" />
           </div>
         </div>
 
@@ -113,7 +130,7 @@ function AdminSettings() {
             {saving ? 'Sauvegarde...' : 'Sauvegarder'}
           </button>
           <button type="button" className="btn btn-secondary" onClick={handleTest} disabled={testing}>
-            {testing ? 'Envoi...' : 'Envoyer un email de test'}
+            {testing ? 'Envoi en cours...' : 'Envoyer un email de test'}
           </button>
         </div>
       </form>

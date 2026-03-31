@@ -44,23 +44,40 @@ function getSmtpSettings() {
   return settings;
 }
 
+function createTransport(smtp) {
+  const port = parseInt(smtp.port) || 587;
+  const encryption = smtp.encryption || 'STARTTLS';
+
+  const config = {
+    host: smtp.host,
+    port,
+    auth: { user: smtp.user, pass: smtp.password },
+    tls: { rejectUnauthorized: false }
+  };
+
+  if (encryption === 'SSL') {
+    config.secure = true;
+  } else if (encryption === 'STARTTLS') {
+    config.secure = false;
+    config.requireTLS = true;
+  } else {
+    config.secure = false;
+  }
+
+  return nodemailer.createTransport(config);
+}
+
 async function sendDepotNotification(product) {
   try {
     const smtp = getSmtpSettings();
     if (!smtp.host || !smtp.user || !smtp.password || !smtp.to) return;
 
-    const transport = nodemailer.createTransport({
-      host: smtp.host,
-      port: parseInt(smtp.port) || 587,
-      secure: false,
-      auth: { user: smtp.user, pass: smtp.password },
-      tls: { ciphers: 'SSLv3', rejectUnauthorized: false }
-    });
+    const transport = createTransport(smtp);
 
     const hasDiscrepancy = product.qty_received !== product.qty_sent;
     const subject = hasDiscrepancy
-      ? `⚠️ Surstock — ÉCART réception : ${product.label}`
-      : `✅ Surstock — Réception complète : ${product.label}`;
+      ? `Surstock - ECART reception : ${product.label}`
+      : `Surstock - Reception complete : ${product.label}`;
 
     await transport.sendMail({
       from: smtp.from || smtp.user,
@@ -68,18 +85,19 @@ async function sendDepotNotification(product) {
       subject,
       html: `
         <h2 style="color:${hasDiscrepancy ? '#d93025' : '#0f9d58'}">
-          ${hasDiscrepancy ? 'Écart détecté à la réception' : 'Réception complète'}
+          ${hasDiscrepancy ? 'Ecart detecte a la reception' : 'Reception complete'}
         </h2>
         <table style="border-collapse:collapse;font-family:sans-serif;">
           <tr><td style="padding:6px 12px;font-weight:bold;">Produit</td><td style="padding:6px 12px;">${product.label}</td></tr>
           <tr><td style="padding:6px 12px;font-weight:bold;">EAN</td><td style="padding:6px 12px;">${product.ean}</td></tr>
           ${product.parkod ? `<tr><td style="padding:6px 12px;font-weight:bold;">PARKOD</td><td style="padding:6px 12px;">${product.parkod}</td></tr>` : ''}
-          <tr><td style="padding:6px 12px;font-weight:bold;">Qté envoyée par magasin</td><td style="padding:6px 12px;">${product.qty_sent}</td></tr>
-          <tr><td style="padding:6px 12px;font-weight:bold;${hasDiscrepancy ? 'color:#d93025' : ''}">Qté reçue au dépôt</td><td style="padding:6px 12px;font-weight:bold;${hasDiscrepancy ? 'color:#d93025' : ''}">${product.qty_received}</td></tr>
-          ${hasDiscrepancy ? `<tr><td style="padding:6px 12px;font-weight:bold;color:#d93025;">Écart</td><td style="padding:6px 12px;font-weight:bold;color:#d93025;">${product.qty_received - product.qty_sent}</td></tr>` : ''}
+          <tr><td style="padding:6px 12px;font-weight:bold;">Qte envoyee par magasin</td><td style="padding:6px 12px;">${product.qty_sent}</td></tr>
+          <tr><td style="padding:6px 12px;font-weight:bold;${hasDiscrepancy ? 'color:#d93025' : ''}">Qte recue au depot</td><td style="padding:6px 12px;font-weight:bold;${hasDiscrepancy ? 'color:#d93025' : ''}">${product.qty_received}</td></tr>
+          ${hasDiscrepancy ? `<tr><td style="padding:6px 12px;font-weight:bold;color:#d93025;">Ecart</td><td style="padding:6px 12px;font-weight:bold;color:#d93025;">${product.qty_received - product.qty_sent}</td></tr>` : ''}
         </table>
       `
     });
+    console.log('Email notification sent for:', product.label);
   } catch (err) {
     console.error('Email notification failed:', err.message);
   }
@@ -88,21 +106,15 @@ async function sendDepotNotification(product) {
 async function sendTestEmail() {
   const smtp = getSmtpSettings();
   if (!smtp.host || !smtp.user || !smtp.password || !smtp.to) {
-    throw new Error('Configuration SMTP incomplète');
+    throw new Error('Configuration SMTP incomplete. Remplissez tous les champs.');
   }
 
-  const transport = nodemailer.createTransport({
-    host: smtp.host,
-    port: parseInt(smtp.port) || 587,
-    secure: false,
-    auth: { user: smtp.user, pass: smtp.password },
-    tls: { ciphers: 'SSLv3', rejectUnauthorized: false }
-  });
+  const transport = createTransport(smtp);
 
   await transport.sendMail({
     from: smtp.from || smtp.user,
     to: smtp.to,
-    subject: 'Surstock — Email de test',
+    subject: 'Surstock - Email de test',
     html: '<h2>Configuration SMTP OK</h2><p>Cet email confirme que la configuration SMTP de Surstock fonctionne correctement.</p>'
   });
 }

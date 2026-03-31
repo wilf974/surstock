@@ -16,9 +16,9 @@ router.get('/smtp', (req, res) => {
 
 // PUT /api/settings/smtp — Sauvegarder la config SMTP
 router.put('/smtp', (req, res) => {
-  const { host, port, user, password, from, to } = req.body;
+  const { host, port, encryption, user, password, from, to } = req.body;
 
-  const fields = { host, port: String(port || '587'), user, from, to };
+  const fields = { host, port: String(port || '587'), encryption: encryption || 'STARTTLS', user, from, to };
   for (const [k, v] of Object.entries(fields)) {
     if (v !== undefined && v !== null) {
       run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [`smtp_${k}`, v]);
