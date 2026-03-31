@@ -9,7 +9,10 @@ function StoreList() {
   const [scannedProduct, setScannedProduct] = useState(null);
   const [qtySent, setQtySent] = useState('');
   const [message, setMessage] = useState(null);
+  const [zeroProduct, setZeroProduct] = useState(null);
+  const [zeroCode, setZeroCode] = useState('');
   const qtyInputRef = useRef(null);
+  const zeroCodeInputRef = useRef(null);
   const highlightedRowRef = useRef(null);
   const scanBufferRef = useRef('');
   const scanTimeoutRef = useRef(null);
@@ -136,6 +139,29 @@ function StoreList() {
     setQtySent('');
   };
 
+  const openZeroModal = (product) => {
+    setZeroProduct(product);
+    setZeroCode('');
+    setTimeout(() => zeroCodeInputRef.current?.focus(), 100);
+  };
+
+  const handleZeroConfirm = async (e) => {
+    e.preventDefault();
+    if (zeroCode !== '123456') {
+      showMsg('Code incorrect', 'error');
+      return;
+    }
+    try {
+      await api.confirmScan(zeroProduct.id, 0);
+      showMsg(`${zeroProduct.label} validé à 0`, 'success');
+      setZeroProduct(null);
+      setZeroCode('');
+      loadProducts();
+    } catch (err) {
+      showMsg('Erreur lors de la validation', 'error');
+    }
+  };
+
   const confirmed = products.filter(p => p.qty_sent !== null).length;
   const pending = products.filter(p => p.qty_sent === null).length;
 
@@ -215,6 +241,42 @@ function StoreList() {
         </div>
       )}
 
+      {/* Modale valider à zéro */}
+      {zeroProduct && (
+        <div className="scan-modal-overlay" onClick={() => setZeroProduct(null)}>
+          <div className="scan-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="scan-modal-header">Valider à zéro</div>
+            <div className="scan-modal-body">
+              <div className="product-info-row">
+                <span className="product-info-label">Produit :</span>
+                <span className="product-info-value product-name">{zeroProduct.label}</span>
+              </div>
+              <form onSubmit={handleZeroConfirm} className="confirm-form">
+                <label className="confirm-label">
+                  Code de validation :
+                  <input
+                    ref={zeroCodeInputRef}
+                    type="text"
+                    value={zeroCode}
+                    onChange={(e) => setZeroCode(e.target.value)}
+                    placeholder="Entrez le code"
+                    className="qty-input"
+                  />
+                </label>
+                <div className="confirm-buttons">
+                  <button type="submit" className="btn btn-danger btn-large">
+                    Valider à 0
+                  </button>
+                  <button type="button" onClick={() => setZeroProduct(null)} className="btn btn-secondary btn-large">
+                    Annuler
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Résumé */}
       <div className="summary-cards">
         <div className="summary-card">
@@ -260,6 +322,7 @@ function StoreList() {
               <th>Libellé</th>
               <th>Qté demandée</th>
               <th>Statut</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -278,6 +341,13 @@ function StoreList() {
                     <span className="badge badge-success">Confirmé ({p.qty_sent})</span>
                   ) : (
                     <span className="badge badge-pending">En attente</span>
+                  )}
+                </td>
+                <td>
+                  {p.qty_sent === null && (
+                    <button className="btn btn-danger btn-small" onClick={() => openZeroModal(p)}>
+                      Valider à 0
+                    </button>
                   )}
                 </td>
               </tr>
