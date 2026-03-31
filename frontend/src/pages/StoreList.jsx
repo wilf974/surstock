@@ -43,7 +43,6 @@ function StoreList() {
     const ean = code.trim();
     if (!ean) return;
 
-    // Chercher le produit dans la liste locale (non confirmé en priorité)
     const found = products.find(p => (p.ean === ean || p.parkod === ean) && p.qty_sent === null);
 
     if (!found) {
@@ -66,18 +65,12 @@ function StoreList() {
     }, 100);
   }, [products]);
 
-  // Écoute globale du clavier pour capter les scans douchette
   useEffect(() => {
-    // La douchette envoie les caractères rapidement puis un Enter
     const handleKeyDown = (e) => {
-      // Ignorer si la modale est ouverte (on est dans le champ quantité)
-      if (scannedProduct) return;
-
-      // Ignorer si le focus est sur un input/textarea/button
+      if (scannedProduct || zeroProduct) return;
       const tag = e.target.tagName.toLowerCase();
       if (tag === 'input' || tag === 'textarea') return;
 
-      // Enter = fin du scan
       if (e.key === 'Enter') {
         e.preventDefault();
         const code = scanBufferRef.current;
@@ -87,23 +80,15 @@ function StoreList() {
           clearTimeout(scanTimeoutRef.current);
           scanTimeoutRef.current = null;
         }
-        if (code.length > 0) {
-          processScannedCode(code);
-        }
+        if (code.length > 0) processScannedCode(code);
         return;
       }
 
-      // Caractères imprimables uniquement
       if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
         e.preventDefault();
         scanBufferRef.current += e.key;
         setScanBuffer(scanBufferRef.current);
-
-        // Reset du timeout — si pas de nouveau caractère après 500ms, on vide le buffer
-        // (protection contre les frappes accidentelles)
-        if (scanTimeoutRef.current) {
-          clearTimeout(scanTimeoutRef.current);
-        }
+        if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
         scanTimeoutRef.current = setTimeout(() => {
           scanBufferRef.current = '';
           setScanBuffer('');
@@ -114,12 +99,11 @@ function StoreList() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [scannedProduct, processScannedCode]);
+  }, [scannedProduct, zeroProduct, processScannedCode]);
 
   const handleConfirm = async (e) => {
     e.preventDefault();
     if (!scannedProduct || qtySent === '') return;
-
     try {
       await api.confirmScan(scannedProduct.id, parseInt(qtySent));
       const diff = parseInt(qtySent) - scannedProduct.qty_requested;
@@ -169,71 +153,55 @@ function StoreList() {
     <div className="page store-list">
       <h1 className="page-title">Liste des produits</h1>
 
-      {/* Message de feedback */}
       {message && (
-        <div className={`alert alert-${message.type}`}>
-          {message.text}
-        </div>
+        <div className={`alert alert-${message.type}`}>{message.text}</div>
       )}
 
-      {/* Indicateur de scan en cours */}
       {scanBuffer && !scannedProduct && (
         <div className="scan-indicator">
           Scan en cours : <strong>{scanBuffer}</strong>
         </div>
       )}
 
-      {/* Indicateur "prêt à scanner" */}
       {!scannedProduct && !scanBuffer && (
         <div className="scan-ready">
           Prêt à scanner — bippez un produit
         </div>
       )}
 
-      {/* Modale de confirmation de quantité */}
+      {/* Modale scan */}
       {scannedProduct && (
         <div className="scan-modal-overlay" onClick={handleCancelScan}>
           <div className="scan-modal" onClick={(e) => e.stopPropagation()}>
             <div className="scan-modal-header">Confirmer la quantité</div>
             <div className="scan-modal-body">
               <div className="product-info-row">
-                <span className="product-info-label">Produit :</span>
+                <span className="product-info-label">Produit</span>
                 <span className="product-info-value product-name">{scannedProduct.label}</span>
               </div>
               <div className="product-info-row">
-                <span className="product-info-label">EAN :</span>
+                <span className="product-info-label">EAN</span>
                 <span className="product-info-value">{scannedProduct.ean}</span>
               </div>
               {scannedProduct.parkod && (
                 <div className="product-info-row">
-                  <span className="product-info-label">PARKOD :</span>
+                  <span className="product-info-label">PARKOD</span>
                   <span className="product-info-value">{scannedProduct.parkod}</span>
                 </div>
               )}
               <div className="product-info-row">
-                <span className="product-info-label">Quantité demandée :</span>
+                <span className="product-info-label">Qté demandée</span>
                 <span className="product-info-value qty-requested">{scannedProduct.qty_requested}</span>
               </div>
-
               <form onSubmit={handleConfirm} className="confirm-form">
                 <label className="confirm-label">
-                  Quantité envoyée :
-                  <input
-                    ref={qtyInputRef}
-                    type="number"
-                    min="0"
-                    value={qtySent}
-                    onChange={(e) => setQtySent(e.target.value)}
-                    className="qty-input"
-                  />
+                  Quantité envoyée
+                  <input ref={qtyInputRef} type="number" min="0" value={qtySent}
+                    onChange={(e) => setQtySent(e.target.value)} className="qty-input" />
                 </label>
                 <div className="confirm-buttons">
-                  <button type="submit" className="btn btn-success btn-large">
-                    Confirmer
-                  </button>
-                  <button type="button" onClick={handleCancelScan} className="btn btn-secondary btn-large">
-                    Annuler
-                  </button>
+                  <button type="submit" className="btn btn-success btn-large">Confirmer</button>
+                  <button type="button" onClick={handleCancelScan} className="btn btn-secondary btn-large">Annuler</button>
                 </div>
               </form>
             </div>
@@ -248,28 +216,19 @@ function StoreList() {
             <div className="scan-modal-header">Valider à zéro</div>
             <div className="scan-modal-body">
               <div className="product-info-row">
-                <span className="product-info-label">Produit :</span>
+                <span className="product-info-label">Produit</span>
                 <span className="product-info-value product-name">{zeroProduct.label}</span>
               </div>
               <form onSubmit={handleZeroConfirm} className="confirm-form">
                 <label className="confirm-label">
-                  Code de validation :
-                  <input
-                    ref={zeroCodeInputRef}
-                    type="text"
-                    value={zeroCode}
-                    onChange={(e) => setZeroCode(e.target.value)}
-                    placeholder="Entrez le code"
-                    className="qty-input"
-                  />
+                  Code de validation
+                  <input ref={zeroCodeInputRef} type="text" value={zeroCode}
+                    onChange={(e) => setZeroCode(e.target.value)} placeholder="Entrez le code"
+                    className="qty-input" />
                 </label>
                 <div className="confirm-buttons">
-                  <button type="submit" className="btn btn-danger btn-large">
-                    Valider à 0
-                  </button>
-                  <button type="button" onClick={() => setZeroProduct(null)} className="btn btn-secondary btn-large">
-                    Annuler
-                  </button>
+                  <button type="submit" className="btn btn-danger btn-large">Valider à 0</button>
+                  <button type="button" onClick={() => setZeroProduct(null)} className="btn btn-secondary btn-large">Annuler</button>
                 </div>
               </form>
             </div>
@@ -295,18 +254,10 @@ function StoreList() {
 
       {/* Filtres */}
       <div className="filter-bar">
-        <button className={`btn ${filter === 'all' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('all')}>
-          Tous
-        </button>
-        <button className={`btn ${filter === 'pending' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('pending')}>
-          En attente
-        </button>
-        <button className={`btn ${filter === 'confirmed' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('confirmed')}>
-          Confirmés
-        </button>
-        <button className="btn btn-secondary" onClick={loadProducts}>
-          Actualiser
-        </button>
+        <button className={`btn ${filter === 'all' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('all')}>Tous</button>
+        <button className={`btn ${filter === 'pending' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('pending')}>En attente</button>
+        <button className={`btn ${filter === 'confirmed' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('confirmed')}>Confirmés</button>
+        <button className="btn btn-secondary" onClick={loadProducts}>Actualiser</button>
       </div>
 
       {loading ? (
@@ -314,46 +265,79 @@ function StoreList() {
       ) : products.length === 0 ? (
         <p className="empty-text">Aucun produit à afficher</p>
       ) : (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>EAN</th>
-              <th>PARKOD</th>
-              <th>Libellé</th>
-              <th>Qté demandée</th>
-              <th>Statut</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+        <>
+          {/* Vue tableau desktop */}
+          <table className="table">
+            <thead>
+              <tr>
+                <th>EAN</th>
+                <th>PARKOD</th>
+                <th>Libellé</th>
+                <th>Qté</th>
+                <th>Statut</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((p) => (
+                <tr key={p.id}
+                  ref={scannedProduct?.id === p.id ? highlightedRowRef : null}
+                  className={scannedProduct?.id === p.id ? 'row-highlighted' : ''}>
+                  <td className="ean-cell">{p.ean}</td>
+                  <td className="ean-cell">{p.parkod || '—'}</td>
+                  <td>{p.label}</td>
+                  <td className="qty-cell">{p.qty_requested}</td>
+                  <td>
+                    {p.qty_sent !== null
+                      ? <span className="badge badge-success">Confirmé ({p.qty_sent})</span>
+                      : <span className="badge badge-pending">En attente</span>}
+                  </td>
+                  <td>
+                    {p.qty_sent === null && (
+                      <button className="btn btn-danger btn-small" onClick={() => openZeroModal(p)}>Valider à 0</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Vue cards mobile */}
+          <div className="card-list">
             {products.map((p) => (
-              <tr
-                key={p.id}
+              <div key={p.id}
                 ref={scannedProduct?.id === p.id ? highlightedRowRef : null}
-                className={scannedProduct?.id === p.id ? 'row-highlighted' : ''}
-              >
-                <td className="ean-cell">{p.ean}</td>
-                <td className="ean-cell">{p.parkod || '—'}</td>
-                <td>{p.label}</td>
-                <td className="qty-cell">{p.qty_requested}</td>
-                <td>
-                  {p.qty_sent !== null ? (
-                    <span className="badge badge-success">Confirmé ({p.qty_sent})</span>
-                  ) : (
-                    <span className="badge badge-pending">En attente</span>
-                  )}
-                </td>
-                <td>
-                  {p.qty_sent === null && (
-                    <button className="btn btn-danger btn-small" onClick={() => openZeroModal(p)}>
+                className={`product-card-item ${p.qty_sent !== null ? 'status-confirmed' : 'status-pending'} ${scannedProduct?.id === p.id ? 'card-highlighted' : ''}`}>
+                <div className="card-item-header">
+                  <span className="card-item-label">{p.label}</span>
+                  {p.qty_sent !== null
+                    ? <span className="badge badge-success">Confirmé</span>
+                    : <span className="badge badge-pending">En attente</span>}
+                </div>
+                <div className="card-item-codes">
+                  EAN: {p.ean}{p.parkod ? ` · PARKOD: ${p.parkod}` : ''}
+                </div>
+                <div className="card-item-row">
+                  <span className="card-item-field">Qté demandée</span>
+                  <span className="card-item-value">{p.qty_requested}</span>
+                </div>
+                {p.qty_sent !== null && (
+                  <div className="card-item-row">
+                    <span className="card-item-field">Qté envoyée</span>
+                    <span className="card-item-value">{p.qty_sent}</span>
+                  </div>
+                )}
+                {p.qty_sent === null && (
+                  <div className="card-item-actions">
+                    <button className="btn btn-danger btn-small" onClick={() => openZeroModal(p)} style={{ width: '100%' }}>
                       Valider à 0
                     </button>
-                  )}
-                </td>
-              </tr>
+                  </div>
+                )}
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+        </>
       )}
     </div>
   );

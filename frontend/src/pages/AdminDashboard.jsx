@@ -38,7 +38,6 @@ function AdminDashboard() {
       .filter(p => p.parkod && p.qty_sent !== null)
       .map(p => [p.parkod, Math.abs(p.diff)]);
     const ws = XLSX.utils.aoa_to_sheet(data);
-    // Forcer la colonne PARKOD en texte pour éviter la conversion en nombre
     for (let i = 0; i < data.length; i++) {
       const cell = ws[XLSX.utils.encode_cell({ r: i, c: 0 })];
       if (cell) { cell.t = 's'; cell.v = String(data[i][0]); }
@@ -55,6 +54,13 @@ function AdminDashboard() {
     return 'diff-over';
   };
 
+  const getCardDiffClass = (product) => {
+    if (product.qty_sent === null) return 'card-diff-pending';
+    if (product.diff === 0) return 'card-diff-ok';
+    if (product.diff < 0) return 'card-diff-under';
+    return 'card-diff-over';
+  };
+
   const getDiffText = (product) => {
     if (product.qty_sent === null) return '—';
     if (product.diff === 0) return 'OK';
@@ -65,7 +71,6 @@ function AdminDashboard() {
     <div className="page admin-dashboard">
       <h1 className="page-title">Tableau de bord</h1>
 
-      {/* Cartes résumé */}
       <div className="summary-cards">
         <div className="summary-card">
           <div className="summary-number">{summary.total}</div>
@@ -85,41 +90,30 @@ function AdminDashboard() {
         </div>
       </div>
 
-      {/* Totaux */}
       <div className="totals-bar">
         <span>Total demandé : <strong>{summary.totalRequested}</strong></span>
         <span>Total envoyé : <strong>{summary.totalSent}</strong></span>
-        <span>Différence globale : <strong className={summary.totalSent - summary.totalRequested < 0 ? 'text-danger' : 'text-success'}>
+        <span>Écart global : <strong className={summary.totalSent - summary.totalRequested < 0 ? 'text-danger' : 'text-success'}>
           {summary.totalSent - summary.totalRequested}
         </strong></span>
       </div>
 
-      {/* Barre de recherche + refresh */}
       <div className="filter-bar">
-        <input
-          type="text"
-          placeholder="Rechercher par EAN ou libellé..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="search-input"
-        />
-        <button className="btn btn-secondary" onClick={loadSummary}>
-          Actualiser
-        </button>
-        <button className="btn btn-success" onClick={exportXlsx}>
-          Export XLSX
-        </button>
+        <input type="text" placeholder="Rechercher par EAN, PARKOD ou libellé..."
+          value={search} onChange={(e) => setSearch(e.target.value)} className="search-input" />
+        <button className="btn btn-secondary" onClick={loadSummary}>Actualiser</button>
+        <button className="btn btn-success" onClick={exportXlsx}>Export XLSX</button>
       </div>
 
-      {/* Tableau des produits */}
+      {/* Tableau desktop */}
       <table className="table">
         <thead>
           <tr>
             <th>EAN</th>
             <th>PARKOD</th>
             <th>Libellé</th>
-            <th>Qté demandée</th>
-            <th>Qté envoyée</th>
+            <th>Demandée</th>
+            <th>Envoyée</th>
             <th>Écart</th>
             <th>Scanné le</th>
           </tr>
@@ -132,9 +126,7 @@ function AdminDashboard() {
               <td>{p.label}</td>
               <td className="qty-cell">{p.qty_requested}</td>
               <td className="qty-cell">{p.qty_sent !== null ? p.qty_sent : '—'}</td>
-              <td className="qty-cell diff-cell">
-                <strong>{getDiffText(p)}</strong>
-              </td>
+              <td className="qty-cell diff-cell"><strong>{getDiffText(p)}</strong></td>
               <td className="date-cell">
                 {p.scanned_at ? new Date(p.scanned_at).toLocaleString('fr-FR') : '—'}
               </td>
@@ -142,6 +134,37 @@ function AdminDashboard() {
           ))}
         </tbody>
       </table>
+
+      {/* Cards mobile */}
+      <div className="card-list">
+        {filteredProducts.map((p) => (
+          <div key={p.id} className={`product-card-item ${getCardDiffClass(p)}`}>
+            <div className="card-item-header">
+              <span className="card-item-label">{p.label}</span>
+              <strong style={{ fontSize: 15 }}>{getDiffText(p)}</strong>
+            </div>
+            <div className="card-item-codes">
+              EAN: {p.ean}{p.parkod ? ` · PARKOD: ${p.parkod}` : ''}
+            </div>
+            <div className="card-item-row">
+              <span className="card-item-field">Demandée</span>
+              <span className="card-item-value">{p.qty_requested}</span>
+            </div>
+            <div className="card-item-row">
+              <span className="card-item-field">Envoyée</span>
+              <span className="card-item-value">{p.qty_sent !== null ? p.qty_sent : '—'}</span>
+            </div>
+            {p.scanned_at && (
+              <div className="card-item-row">
+                <span className="card-item-field">Scanné le</span>
+                <span className="card-item-value" style={{ fontSize: 12 }}>
+                  {new Date(p.scanned_at).toLocaleString('fr-FR')}
+                </span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

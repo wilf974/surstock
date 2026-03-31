@@ -38,16 +38,11 @@ function AdminInsert() {
       showMsg('Tous les champs sont requis', 'error');
       return;
     }
-
     try {
       const fullLabel = marque.trim() ? `${marque.trim()} - ${label.trim()}` : label.trim();
       await api.addProduct({ ean: ean.trim(), parkod: parkod.trim() || null, label: fullLabel, qty_requested: parseInt(qtyRequested) });
       showMsg(`Produit "${fullLabel}" ajouté`);
-      setEan('');
-      setParkod('');
-      setMarque('');
-      setLabel('');
-      setQtyRequested('');
+      setEan(''); setParkod(''); setMarque(''); setLabel(''); setQtyRequested('');
       loadProducts();
     } catch (err) {
       showMsg('Erreur lors de l\'ajout', 'error');
@@ -56,128 +51,67 @@ function AdminInsert() {
 
   const handleBulkImport = async () => {
     if (!bulkText.trim()) return;
-
-    // Format attendu : EAN;PARKOD;Libellé;Quantité (une ligne par produit)
-    // Accepte aussi : EAN;Libellé;Quantité (sans PARKOD)
     const lines = bulkText.trim().split('\n');
     const items = [];
-
     for (const line of lines) {
       const parts = line.split(/[;\t]/);
       if (parts.length >= 4) {
-        items.push({
-          ean: parts[0].trim(),
-          parkod: parts[1].trim() || null,
-          label: parts[2].trim(),
-          qty_requested: parseInt(parts[3].trim()),
-        });
+        items.push({ ean: parts[0].trim(), parkod: parts[1].trim() || null, label: parts[2].trim(), qty_requested: parseInt(parts[3].trim()) });
       } else if (parts.length >= 3) {
-        items.push({
-          ean: parts[0].trim(),
-          parkod: null,
-          label: parts[1].trim(),
-          qty_requested: parseInt(parts[2].trim()),
-        });
+        items.push({ ean: parts[0].trim(), parkod: null, label: parts[1].trim(), qty_requested: parseInt(parts[2].trim()) });
       }
     }
-
-    if (items.length === 0) {
-      showMsg('Aucun produit valide trouvé. Format : EAN;PARKOD;Libellé;Quantité', 'error');
-      return;
-    }
-
+    if (items.length === 0) { showMsg('Aucun produit valide trouvé', 'error'); return; }
     try {
       const result = await api.addProductsBulk(items);
       showMsg(`${result.inserted} produit(s) importé(s)`);
-      setBulkText('');
-      setShowBulk(false);
-      loadProducts();
-    } catch (err) {
-      showMsg('Erreur lors de l\'import', 'error');
-    }
+      setBulkText(''); setShowBulk(false); loadProducts();
+    } catch (err) { showMsg('Erreur lors de l\'import', 'error'); }
   };
 
   const handleXlsxImport = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const data = await file.arrayBuffer();
     const workbook = XLSX.read(data);
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
-
     const items = [];
     for (const row of rows) {
       if (!row[0]) continue;
       if (row.length >= 5) {
-        // Format 5 colonnes : EAN, PARKOD, Marque, Libellé, Quantité
-        const marque = row[2] ? String(row[2]).trim() : '';
-        const libelle = row[3] ? String(row[3]).trim() : '';
-        items.push({
-          ean: String(row[0]).trim(),
-          parkod: row[1] ? String(row[1]).trim() : null,
-          label: marque ? `${marque} - ${libelle}` : libelle,
-          qty_requested: parseInt(row[4]) || 0,
-        });
+        const m = row[2] ? String(row[2]).trim() : '';
+        const l = row[3] ? String(row[3]).trim() : '';
+        items.push({ ean: String(row[0]).trim(), parkod: row[1] ? String(row[1]).trim() : null, label: m ? `${m} - ${l}` : l, qty_requested: parseInt(row[4]) || 0 });
       } else if (row.length >= 4) {
-        // Format 4 colonnes : EAN, PARKOD, Libellé, Quantité
-        items.push({
-          ean: String(row[0]).trim(),
-          parkod: row[1] ? String(row[1]).trim() : null,
-          label: String(row[2]).trim(),
-          qty_requested: parseInt(row[3]) || 0,
-        });
+        items.push({ ean: String(row[0]).trim(), parkod: row[1] ? String(row[1]).trim() : null, label: String(row[2]).trim(), qty_requested: parseInt(row[3]) || 0 });
       }
     }
-
-    if (items.length === 0) {
-      showMsg('Aucun produit valide trouvé dans le fichier', 'error');
-      fileInputRef.current.value = '';
-      return;
-    }
-
+    if (items.length === 0) { showMsg('Aucun produit valide trouvé dans le fichier', 'error'); fileInputRef.current.value = ''; return; }
     try {
       const result = await api.addProductsBulk(items);
       showMsg(`${result.inserted} produit(s) importé(s) depuis le fichier XLSX`);
       loadProducts();
-    } catch (err) {
-      showMsg('Erreur lors de l\'import XLSX', 'error');
-    }
+    } catch (err) { showMsg('Erreur lors de l\'import XLSX', 'error'); }
     fileInputRef.current.value = '';
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Supprimer ce produit ?')) return;
-    try {
-      await api.deleteProduct(id);
-      loadProducts();
-    } catch (err) {
-      showMsg('Erreur lors de la suppression', 'error');
-    }
+    try { await api.deleteProduct(id); loadProducts(); } catch (err) { showMsg('Erreur', 'error'); }
   };
 
   const handleDeleteAll = async () => {
     if (!window.confirm('Supprimer TOUS les produits ? Cette action est irréversible.')) return;
-    try {
-      await api.deleteAllProducts();
-      showMsg('Tous les produits ont été supprimés');
-      loadProducts();
-    } catch (err) {
-      showMsg('Erreur', 'error');
-    }
+    try { await api.deleteAllProducts(); showMsg('Tous les produits ont été supprimés'); loadProducts(); } catch (err) { showMsg('Erreur', 'error'); }
   };
 
   return (
     <div className="page admin-insert">
       <h1 className="page-title">Saisie des produits</h1>
 
-      {message && (
-        <div className={`alert alert-${message.type}`}>
-          {message.text}
-        </div>
-      )}
+      {message && <div className={`alert alert-${message.type}`}>{message.text}</div>}
 
-      {/* Formulaire ajout unitaire */}
       <form onSubmit={handleAdd} className="insert-form">
         <div className="form-row">
           <div className="form-group">
@@ -194,95 +128,108 @@ function AdminInsert() {
           </div>
           <div className="form-group">
             <label>Libellé</label>
-            <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Nutella 400g" />
+            <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="MY WAY EDP 50ML" />
           </div>
           <div className="form-group">
             <label>Quantité</label>
-            <input type="number" min="1" value={qtyRequested} onChange={(e) => setQtyRequested(e.target.value)} placeholder="10" />
+            <input type="number" min="0" value={qtyRequested} onChange={(e) => setQtyRequested(e.target.value)} placeholder="10" />
           </div>
           <button type="submit" className="btn btn-primary">Ajouter</button>
         </div>
       </form>
 
-      {/* Import en masse */}
       <div className="bulk-section">
         <div className="bulk-buttons">
           <button className="btn btn-secondary" onClick={() => setShowBulk(!showBulk)}>
-            {showBulk ? 'Masquer l\'import en masse' : 'Import en masse (copier/coller)'}
+            {showBulk ? 'Masquer l\'import' : 'Import en masse'}
           </button>
           <label className="btn btn-success">
-            Import fichier XLSX
+            Import XLSX
             <input type="file" accept=".xlsx,.xls" ref={fileInputRef} onChange={handleXlsxImport} style={{ display: 'none' }} />
           </label>
         </div>
-
         {showBulk && (
           <div className="bulk-form">
             <p className="bulk-help">
-              Collez vos produits ci-dessous, un par ligne, au format :<br />
-              <code>EAN;PARKOD;Libellé;Quantité</code> ou <code>EAN;Libellé;Quantité</code> (séparateur : point-virgule ou tabulation)
+              Un produit par ligne : <code>EAN;PARKOD;Libellé;Quantité</code> (séparateur ; ou tabulation)
             </p>
-            <textarea
-              value={bulkText}
-              onChange={(e) => setBulkText(e.target.value)}
-              rows={8}
-              placeholder={"3017620422003;PKD001;Nutella 400g;24\n5000159484657;PKD002;Coca-Cola 1.5L;12\n8076809513753;;Barilla Spaghetti;36"}
-            />
-            <button className="btn btn-primary" onClick={handleBulkImport}>
-              Importer
-            </button>
+            <textarea value={bulkText} onChange={(e) => setBulkText(e.target.value)} rows={8}
+              placeholder={"3017620422003;PKD001;Nutella 400g;24\n5000159484657;PKD002;Coca-Cola 1.5L;12"} />
+            <button className="btn btn-primary" onClick={handleBulkImport}>Importer</button>
           </div>
         )}
       </div>
 
-      {/* Liste des produits */}
       <div className="products-section">
         <div className="section-header">
           <h2>Produits enregistrés ({products.length})</h2>
           {products.length > 0 && (
-            <button className="btn btn-danger" onClick={handleDeleteAll}>
-              Tout supprimer
-            </button>
+            <button className="btn btn-danger" onClick={handleDeleteAll}>Tout supprimer</button>
           )}
         </div>
 
         {products.length === 0 ? (
           <p className="empty-text">Aucun produit enregistré</p>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>EAN</th>
-                <th>PARKOD</th>
-                <th>Libellé</th>
-                <th>Qté demandée</th>
-                <th>Statut</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            {/* Tableau desktop */}
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>EAN</th>
+                  <th>PARKOD</th>
+                  <th>Libellé</th>
+                  <th>Qté</th>
+                  <th>Statut</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((p) => (
+                  <tr key={p.id}>
+                    <td className="ean-cell">{p.ean}</td>
+                    <td className="ean-cell">{p.parkod || '—'}</td>
+                    <td>{p.label}</td>
+                    <td className="qty-cell">{p.qty_requested}</td>
+                    <td>
+                      {p.qty_sent !== null
+                        ? <span className="badge badge-success">Confirmé ({p.qty_sent})</span>
+                        : <span className="badge badge-pending">En attente</span>}
+                    </td>
+                    <td>
+                      <button className="btn btn-danger btn-small" onClick={() => handleDelete(p.id)}>Supprimer</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Cards mobile */}
+            <div className="card-list">
               {products.map((p) => (
-                <tr key={p.id}>
-                  <td className="ean-cell">{p.ean}</td>
-                  <td className="ean-cell">{p.parkod || '—'}</td>
-                  <td>{p.label}</td>
-                  <td className="qty-cell">{p.qty_requested}</td>
-                  <td>
-                    {p.qty_sent !== null ? (
-                      <span className="badge badge-success">Confirmé ({p.qty_sent})</span>
-                    ) : (
-                      <span className="badge badge-pending">En attente</span>
-                    )}
-                  </td>
-                  <td>
-                    <button className="btn btn-danger btn-small" onClick={() => handleDelete(p.id)}>
+                <div key={p.id} className={`product-card-item ${p.qty_sent !== null ? 'status-confirmed' : 'status-pending'}`}>
+                  <div className="card-item-header">
+                    <span className="card-item-label">{p.label}</span>
+                    {p.qty_sent !== null
+                      ? <span className="badge badge-success">Confirmé</span>
+                      : <span className="badge badge-pending">En attente</span>}
+                  </div>
+                  <div className="card-item-codes">
+                    EAN: {p.ean}{p.parkod ? ` · PARKOD: ${p.parkod}` : ''}
+                  </div>
+                  <div className="card-item-row">
+                    <span className="card-item-field">Qté demandée</span>
+                    <span className="card-item-value">{p.qty_requested}</span>
+                  </div>
+                  <div className="card-item-actions">
+                    <button className="btn btn-danger btn-small" onClick={() => handleDelete(p.id)} style={{ width: '100%' }}>
                       Supprimer
                     </button>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </div>
     </div>
