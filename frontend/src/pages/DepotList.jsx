@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
 import { api } from '../api';
 import CameraScanner from '../components/CameraScanner';
+import Toast from '../components/Toast';
 
 // ──────────────────────────────────────────────
 // Ligne tableau (desktop)
@@ -219,7 +220,7 @@ function DepotList() {
     <div className="page store-list">
       <h1 className="page-title">Réception dépôt</h1>
 
-      {message && <div className={`alert alert-${message.type}`}>{message.text}</div>}
+      <Toast message={message} onClose={() => setMessage(null)} />
 
       {scanBuffer && (
         <div className="scan-indicator">Scan en cours : <strong>{scanBuffer}</strong></div>

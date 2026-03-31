@@ -417,6 +417,51 @@ body {
 .alert-warning { background: var(--orange-pale); color: #8a6111; border-color: var(--orange); }
 
 /* ============================================
+   TOAST (fixe en bas de l'écran)
+   ============================================ */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 14px 24px;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font);
+  z-index: 500;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+  cursor: pointer;
+  animation: toastIn 0.3s ease;
+  max-width: calc(100vw - 32px);
+  text-align: center;
+}
+
+@keyframes toastIn {
+  from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+.toast-success { background: var(--green); color: var(--white); }
+.toast-error { background: var(--red); color: var(--white); }
+.toast-warning { background: var(--orange); color: var(--white); }
+.toast-info { background: var(--blue); color: var(--white); }
+
+@media (max-width: 768px) {
+  .toast {
+    bottom: 90px;
+    left: 16px;
+    right: 16px;
+    transform: none;
+    max-width: none;
+  }
+  @keyframes toastIn {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+}
+
+/* ============================================
    BUTTONS
    ============================================ */
 .btn {

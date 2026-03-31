@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '../api';
 import CameraScanner from '../components/CameraScanner';
+import Toast from '../components/Toast';
 
 // ──────────────────────────────────────────────
 // Popup "Valider à 0" — rendu via Portal, hors de l'arbre StoreList
@@ -352,7 +353,7 @@ function StoreList() {
     <div className="page store-list">
       <h1 className="page-title">Liste des produits</h1>
 
-      {message && <div className={`alert alert-${message.type}`}>{message.text}</div>}
+      <Toast message={message} onClose={() => setMessage(null)} />
 
       {scanBuffer && !scannedProduct && (
         <div className="scan-indicator">Scan en cours : <strong>{scanBuffer}</strong></div>
