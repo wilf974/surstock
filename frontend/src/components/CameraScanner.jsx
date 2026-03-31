@@ -23,12 +23,22 @@ function CameraScanner({ onScan, onClose }) {
         const html5Qrcode = new Html5Qrcode('camera-reader');
         scannerRef.current = html5Qrcode;
 
+        // Config avec autofocus continu
+        const videoConstraints = {
+          facingMode: 'environment',
+          advanced: [{ focusMode: 'continuous' }],
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        };
+
         await html5Qrcode.start(
-          { facingMode: 'environment' },
+          videoConstraints,
           {
-            fps: 10,
-            qrbox: { width: 250, height: 80 },
-            formatsToSupport: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+            fps: 15,
+            qrbox: { width: 280, height: 100 },
+            aspectRatio: 1.0,
+            formatsToSupport: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true }
           },
           (decodedText) => {
             if (scannedRef.current) return;
@@ -39,6 +49,21 @@ function CameraScanner({ onScan, onClose }) {
           },
           () => {}
         );
+
+        // Forcer l'autofocus après le démarrage
+        try {
+          const videoElement = document.querySelector('#camera-reader video');
+          if (videoElement && videoElement.srcObject) {
+            const track = videoElement.srcObject.getVideoTracks()[0];
+            const capabilities = track.getCapabilities?.();
+            if (capabilities?.focusMode?.includes('continuous')) {
+              await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+            }
+          }
+        } catch (e) {
+          // Pas grave si l'autofocus ne passe pas
+        }
+
       } catch (err) {
         console.error('Erreur caméra:', err);
         if (!cancelled) {

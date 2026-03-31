@@ -733,6 +733,34 @@ tr.row-status-depot-discrepancy { cursor: help; }
   box-shadow: 0 0 0 3px rgba(45,125,210,0.12);
 }
 
+/* Bouton flottant caméra (mobile) */
+.fab-camera {
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: var(--white);
+  border: none;
+  box-shadow: 0 4px 16px rgba(45,125,210,0.4);
+  cursor: pointer;
+  z-index: 50;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+
+.fab-camera:active {
+  transform: scale(0.92);
+}
+
+@media (max-width: 768px) {
+  .fab-camera { display: flex; }
+}
+
 /* ============================================
    SUMMARY CARDS
    ============================================ */
