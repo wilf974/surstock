@@ -163,6 +163,7 @@ function StoreList() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [manualEan, setManualEan] = useState('');
+  const [brandFilter, setBrandFilter] = useState('');
   const qtyInputRef = useRef(null);
   const manualInputRef = useRef(null);
   const scanBufferRef = useRef('');
@@ -323,10 +324,24 @@ function StoreList() {
     w.print();
   }, [products]);
 
-  const confirmed = useMemo(() => products.filter(p => p.qty_sent !== null).length, [products]);
-  const pending = useMemo(() => products.filter(p => p.qty_sent === null).length, [products]);
-  const visibleProducts = useMemo(() => products.slice(0, visibleCount), [products, visibleCount]);
-  const hasMore = visibleCount < products.length;
+  const brands = useMemo(() => {
+    const set = new Set();
+    products.forEach(p => {
+      const m = p.label.split(' - ')[0]?.trim();
+      if (m) set.add(m);
+    });
+    return [...set].sort();
+  }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    if (!brandFilter) return products;
+    return products.filter(p => p.label.startsWith(brandFilter + ' - ') || p.label === brandFilter);
+  }, [products, brandFilter]);
+
+  const confirmed = useMemo(() => filteredProducts.filter(p => p.qty_sent !== null).length, [filteredProducts]);
+  const pending = useMemo(() => filteredProducts.filter(p => p.qty_sent === null).length, [filteredProducts]);
+  const visibleProducts = useMemo(() => filteredProducts.slice(0, visibleCount), [filteredProducts, visibleCount]);
+  const hasMore = visibleCount < filteredProducts.length;
 
   return (
     <div className="page store-list">
@@ -427,6 +442,10 @@ function StoreList() {
         <button className={`btn ${filter === 'all' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('all')}>Tous</button>
         <button className={`btn ${filter === 'pending' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('pending')}>En attente</button>
         <button className={`btn ${filter === 'confirmed' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('confirmed')}>Confirmés</button>
+        <select className="brand-select" value={brandFilter} onChange={(e) => { setBrandFilter(e.target.value); setVisibleCount(PAGE_SIZE); }}>
+          <option value="">Toutes les marques</option>
+          {brands.map(b => <option key={b} value={b}>{b}</option>)}
+        </select>
         <button className="btn btn-secondary" onClick={loadProducts}>Actualiser</button>
         <button className="btn btn-secondary" onClick={handlePrint}>Imprimer</button>
       </div>
@@ -464,7 +483,7 @@ function StoreList() {
           {/* Sentinel pour infinite scroll */}
           {hasMore && (
             <div ref={sentinelRef} className="loading-text">
-              {products.length - visibleCount} produits restants...
+              {filteredProducts.length - visibleCount} produits restants...
             </div>
           )}
         </>

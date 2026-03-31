@@ -75,6 +75,7 @@ function DepotList() {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [manualEan, setManualEan] = useState('');
+  const [brandFilter, setBrandFilter] = useState('');
   const manualInputRef = useRef(null);
   const scanBufferRef = useRef('');
   const scanTimeoutRef = useRef(null);
@@ -188,12 +189,23 @@ function DepotList() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [processScannedCode]);
 
-  const totalCount = products.length;
-  const completeCount = useMemo(() => products.filter(p => p.qty_received !== null && p.qty_received >= p.qty_sent).length, [products]);
-  const awaitingCount = useMemo(() => products.filter(p => p.qty_received === null || p.qty_received < p.qty_sent).length, [products]);
-  const discrepancyCount = useMemo(() => products.filter(p => p.qty_received !== null && p.qty_received >= p.qty_sent && p.qty_received !== p.qty_sent).length, [products]);
-  const visibleProducts = useMemo(() => products.slice(0, visibleCount), [products, visibleCount]);
-  const hasMore = visibleCount < products.length;
+  const brands = useMemo(() => {
+    const set = new Set();
+    products.forEach(p => { const m = p.label.split(' - ')[0]?.trim(); if (m) set.add(m); });
+    return [...set].sort();
+  }, [products]);
+
+  const filteredByBrand = useMemo(() => {
+    if (!brandFilter) return products;
+    return products.filter(p => p.label.startsWith(brandFilter + ' - ') || p.label === brandFilter);
+  }, [products, brandFilter]);
+
+  const totalCount = filteredByBrand.length;
+  const completeCount = useMemo(() => filteredByBrand.filter(p => p.qty_received !== null && p.qty_received >= p.qty_sent).length, [filteredByBrand]);
+  const awaitingCount = useMemo(() => filteredByBrand.filter(p => p.qty_received === null || p.qty_received < p.qty_sent).length, [filteredByBrand]);
+  const discrepancyCount = useMemo(() => filteredByBrand.filter(p => p.qty_received !== null && p.qty_received >= p.qty_sent && p.qty_received !== p.qty_sent).length, [filteredByBrand]);
+  const visibleProducts = useMemo(() => filteredByBrand.slice(0, visibleCount), [filteredByBrand, visibleCount]);
+  const hasMore = visibleCount < filteredByBrand.length;
 
   return (
     <div className="page store-list">
@@ -261,6 +273,10 @@ function DepotList() {
         <button className={`btn ${filter === 'all' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('all')}>Tous</button>
         <button className={`btn ${filter === 'awaiting' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('awaiting')}>En cours</button>
         <button className={`btn ${filter === 'complete' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('complete')}>Complets</button>
+        <select className="brand-select" value={brandFilter} onChange={(e) => { setBrandFilter(e.target.value); setVisibleCount(PAGE_SIZE); }}>
+          <option value="">Toutes les marques</option>
+          {brands.map(b => <option key={b} value={b}>{b}</option>)}
+        </select>
         <button className="btn btn-secondary" onClick={loadProducts}>Actualiser</button>
       </div>
 
@@ -296,7 +312,7 @@ function DepotList() {
 
           {hasMore && (
             <div ref={sentinelRef} className="loading-text">
-              {products.length - visibleCount} produits restants...
+              {filteredByBrand.length - visibleCount} produits restants...
             </div>
           )}
         </>

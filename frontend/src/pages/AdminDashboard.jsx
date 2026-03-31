@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 function AdminDashboard() {
   const [summary, setSummary] = useState(null);
   const [search, setSearch] = useState('');
+  const [brandFilter, setBrandFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(null);
 
@@ -26,11 +27,16 @@ function AdminDashboard() {
     return <div className="page"><p className="loading-text">Chargement...</p></div>;
   }
 
-  const filteredProducts = summary.products.filter(p =>
-    p.ean.toLowerCase().includes(search.toLowerCase()) ||
-    (p.parkod && p.parkod.toLowerCase().includes(search.toLowerCase())) ||
-    p.label.toLowerCase().includes(search.toLowerCase())
-  );
+  const brands = [...new Set(summary.products.map(p => p.label.split(' - ')[0]?.trim()).filter(Boolean))].sort();
+
+  const filteredProducts = summary.products.filter(p => {
+    const matchSearch = !search ||
+      p.ean.toLowerCase().includes(search.toLowerCase()) ||
+      (p.parkod && p.parkod.toLowerCase().includes(search.toLowerCase())) ||
+      p.label.toLowerCase().includes(search.toLowerCase());
+    const matchBrand = !brandFilter || p.label.startsWith(brandFilter + ' - ') || p.label === brandFilter;
+    return matchSearch && matchBrand;
+  });
 
   const exportXlsx = () => {
     const data = filteredProducts
@@ -170,6 +176,10 @@ function AdminDashboard() {
       <div className="filter-bar">
         <input type="text" placeholder="Rechercher par EAN, PARKOD ou libellé..."
           value={search} onChange={(e) => setSearch(e.target.value)} className="search-input" />
+        <select className="brand-select" value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)}>
+          <option value="">Toutes les marques</option>
+          {brands.map(b => <option key={b} value={b}>{b}</option>)}
+        </select>
         <button className="btn btn-secondary" onClick={loadSummary}>Actualiser</button>
         <button className="btn btn-success" onClick={exportXlsx}>Export XLSX</button>
       </div>

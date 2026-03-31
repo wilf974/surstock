@@ -815,6 +815,22 @@ tr.row-status-depot-discrepancy { cursor: help; }
 
 .search-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(45,125,210,0.12); }
 
+.brand-select {
+  padding: 10px 14px;
+  border: 2px solid var(--gray-200);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: var(--font);
+  outline: none;
+  min-height: 44px;
+  background: var(--white);
+  cursor: pointer;
+  transition: var(--transition);
+  appearance: auto;
+}
+
+.brand-select:focus { border-color: var(--blue); }
+
 /* ============================================
    BADGES
    ============================================ */
