@@ -151,95 +151,58 @@ const ProductCard = memo(function ProductCard({ p, onZero }) {
 // Scanner caméra mobile
 // ──────────────────────────────────────────────
 function CameraScanner({ onScan, onClose }) {
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
   const scannerRef = useRef(null);
   const [error, setError] = useState(null);
+  const scannedRef = useRef(false);
 
-  const stopAll = useCallback(() => {
+  const handleClose = useCallback(() => {
     if (scannerRef.current) {
       scannerRef.current.stop().catch(() => {});
       scannerRef.current = null;
     }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop());
-      streamRef.current = null;
-    }
-  }, []);
-
-  const handleClose = useCallback(() => {
-    stopAll();
     onClose();
-  }, [stopAll, onClose]);
+  }, [onClose]);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function startCamera() {
+    async function start() {
       try {
-        // Demander la caméra directement via getUserMedia (meilleur support iOS)
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: false
-        });
-
-        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
-        streamRef.current = stream;
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.setAttribute('playsinline', 'true');
-          videoRef.current.setAttribute('autoplay', 'true');
-          await videoRef.current.play();
-        }
-
-        // Lancer le scanner sur le flux vidéo
-        const html5Qrcode = new Html5Qrcode('camera-scanner-hidden');
+        const html5Qrcode = new Html5Qrcode('camera-reader');
         scannerRef.current = html5Qrcode;
 
         await html5Qrcode.start(
           { facingMode: 'environment' },
-          { fps: 15, qrbox: { width: 280, height: 100 } },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 80 },
+            formatsToSupport: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+          },
           (decodedText) => {
-            stopAll();
+            if (scannedRef.current) return;
+            scannedRef.current = true;
+            html5Qrcode.stop().catch(() => {});
+            scannerRef.current = null;
             onScan(decodedText);
           },
           () => {}
         );
-
-        // Cacher le player créé par html5-qrcode et montrer le notre
-        const lib = document.getElementById('camera-scanner-hidden');
-        if (lib) lib.style.display = 'none';
-
       } catch (err) {
         console.error('Erreur caméra:', err);
         if (!cancelled) {
-          // Fallback : utiliser directement html5-qrcode sans getUserMedia
-          try {
-            const html5Qrcode = new Html5Qrcode('camera-scanner-fallback');
-            scannerRef.current = html5Qrcode;
-            await html5Qrcode.start(
-              { facingMode: 'environment' },
-              { fps: 15, qrbox: { width: 280, height: 100 } },
-              (decodedText) => {
-                html5Qrcode.stop().catch(() => {});
-                onScan(decodedText);
-              },
-              () => {}
-            );
-          } catch (err2) {
-            console.error('Erreur fallback:', err2);
-            setError('Impossible d\'accéder à la caméra. Vérifiez les permissions.');
-          }
+          setError('Impossible d\'accéder à la caméra. Vérifiez les permissions dans les réglages.');
         }
       }
     }
 
-    startCamera();
+    start();
 
     return () => {
       cancelled = true;
-      stopAll();
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {});
+        scannerRef.current = null;
+      }
     };
   }, []);
 
@@ -251,12 +214,10 @@ function CameraScanner({ onScan, onClose }) {
           <button className="btn btn-danger btn-small" onClick={handleClose}>Fermer</button>
         </div>
         {error ? (
-          <div className="alert alert-error">{error}</div>
+          <div className="alert alert-error" style={{ margin: 16 }}>{error}</div>
         ) : (
           <>
-            <video ref={videoRef} className="camera-video" playsInline autoPlay muted />
-            <div id="camera-scanner-hidden" style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}></div>
-            <div id="camera-scanner-fallback" className="camera-viewport"></div>
+            <div id="camera-reader" className="camera-viewport"></div>
             <p style={{ color: 'white', textAlign: 'center', marginTop: 12, fontSize: 14, opacity: 0.7 }}>
               Pointez vers un code-barres
             </p>

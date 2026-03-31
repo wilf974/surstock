@@ -420,28 +420,32 @@ tr.diff-pending { background: var(--gray-50) !important; }
   font-size: 16px;
 }
 
-.camera-video {
-  width: 100%;
-  border-radius: var(--radius);
-  display: block;
-  background: #000;
-  max-height: 50vh;
-  object-fit: cover;
-}
-
 .camera-viewport {
   width: 100%;
   border-radius: var(--radius);
   overflow: hidden;
+  background: #000;
 }
 
 .camera-viewport video {
   width: 100% !important;
-  border-radius: var(--radius);
+  max-height: 60vh !important;
 }
 
-#camera-scanner-fallback video {
-  max-height: 50vh !important;
+#camera-reader {
+  border: none !important;
+}
+
+#camera-reader > div {
+  border: none !important;
+}
+
+#camera-reader__scan_region {
+  min-height: 200px;
+}
+
+#camera-reader__dashboard {
+  display: none !important;
 }
 
 .camera-btn {
