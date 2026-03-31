@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import NotificationBell from './NotificationBell';
 
 function Navbar({ isAdmin, isStore, isDepot, onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -50,6 +51,11 @@ function Navbar({ isAdmin, isStore, isDepot, onLogout }) {
               Réglages
             </NavLink>
           </div>
+          {isAdmin && (
+            <div className="nav-notif-section">
+              <NotificationBell />
+            </div>
+          )}
           {(isAdmin || isStore || isDepot) && (
             <button className="nav-logout" onClick={() => { onLogout(); closeMenu(); }}>
               Déconnexion

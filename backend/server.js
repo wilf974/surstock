@@ -10,6 +10,7 @@ const scanRoutes = require('./routes/scan');
 const depotRoutes = require('./routes/depot');
 const dashboardRoutes = require('./routes/dashboard');
 const settingsRoutes = require('./routes/settings');
+const { router: notificationsRoutes } = require('./routes/notifications');
 const { router: authRoutes, requireAdmin, requireStore, requireDepot } = require('./routes/auth');
 
 const app = express();
@@ -61,6 +62,7 @@ app.use('/api/depot/:id/reset', requireAdmin);
 app.use('/api/depot', requireDepot, depotRoutes);
 app.use('/api/dashboard', requireAdmin, dashboardRoutes);
 app.use('/api/settings', requireAdmin, settingsRoutes);
+app.use('/api/notifications', requireAdmin, notificationsRoutes);
 
 // Fallback vers le frontend pour les routes SPA
 app.get('*', (req, res) => {

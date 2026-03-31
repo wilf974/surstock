@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { queryOne, queryAll, run } = require('../db');
 const { sendDepotNotification } = require('../email');
+const { addNotification } = require('./notifications');
 
 // GET /api/depot/ean/:ean — Chercher un produit confirmé par le magasin (pour scan dépôt)
 router.get('/ean/:ean', (req, res) => {
@@ -62,6 +63,19 @@ router.patch('/:id/scan', async (req, res) => {
   // Envoyer notification à chaque scan
   console.log(`Depot scan: ${updated.label} - reçu ${newReceived}/${product.qty_sent}`);
   sendDepotNotification(updated).catch(err => console.error('Email error:', err.message));
+
+  // Notification in-app
+  if (newReceived !== product.qty_sent) {
+    addNotification(
+      `ÉCART: ${updated.label} — reçu ${newReceived}/${product.qty_sent}`,
+      newReceived > product.qty_sent ? 'error' : 'warning'
+    );
+  } else {
+    addNotification(
+      `Produit ${updated.label} scanné au dépôt (${newReceived}/${product.qty_sent})`,
+      'info'
+    );
+  }
 
   res.json(updated);
 });

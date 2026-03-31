@@ -50,4 +50,9 @@ export const api = {
   getSmtpSettings: () => request('/settings/smtp'),
   saveSmtpSettings: (data) => request('/settings/smtp', { method: 'PUT', body: JSON.stringify(data) }),
   testSmtp: () => request('/settings/smtp/test', { method: 'POST' }),
+
+  // Notifications
+  getNotifications: () => request('/notifications'),
+  markNotificationsRead: () => request('/notifications/read', { method: 'PATCH' }),
+  clearNotifications: () => request('/notifications', { method: 'DELETE' }),
 };

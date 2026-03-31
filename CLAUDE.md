@@ -26,7 +26,8 @@ Surstock/
 │       ├── auth.js        # Login/logout/check + rôles admin/store + middleware requireAdmin/requireStore
 │       ├── products.js    # CRUD produits (GET store, POST/DELETE admin) + auto-validation qty=0
 │       ├── scan.js        # Confirmation scan (magasin, protégé store)
-│       └── dashboard.js   # Stats et résumé (admin)
+│       ├── dashboard.js   # Stats et résumé (admin)
+│       └── notifications.js # Notifications in-memory (max 50) — admin only
 ├── frontend/
 │   ├── package.json       # Dépendances: react, react-router-dom, xlsx
 │   ├── vite.config.js     # Proxy /api → localhost:3001
@@ -43,7 +44,8 @@ Surstock/
 │       │   ├── StoreScan.jsx       # OBSOLÈTE - redirige vers StoreList
 │       │   └── StoreList.jsx       # Liste produits + scan douchette + bouton "Valider à 0" (code 123456)
 │       └── components/
-│           └── Navbar.jsx          # Navigation hamburger mobile + liens Magasin/Admin + déconnexion
+│           ├── Navbar.jsx          # Navigation hamburger mobile + liens Magasin/Admin + déconnexion
+│           └── NotificationBell.jsx # Cloche notifications (polling 10s, dropdown, admin only)
 └── frontend/public/
 ```
 
@@ -112,6 +114,11 @@ Note : si `qty_requested` = 0 à l'insertion, le produit est auto-validé (`qty_
 
 ### Dashboard (`/api/dashboard`)
 - `GET /api/dashboard/summary` — Résumé complet (protégé admin)
+
+### Notifications (`/api/notifications`)
+- `GET /api/notifications` — Liste des notifications in-memory (admin only)
+- `PATCH /api/notifications/read` — Marquer toutes comme lues
+- `DELETE /api/notifications` — Effacer toutes les notifications
 
 ## Routes Frontend
 - `/` → redirige vers `/magasin/liste`
