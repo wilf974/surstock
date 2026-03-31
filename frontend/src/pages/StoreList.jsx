@@ -16,6 +16,12 @@ function StoreList() {
   const highlightedRowRef = useRef(null);
   const scanBufferRef = useRef('');
   const scanTimeoutRef = useRef(null);
+  const productsRef = useRef(products);
+  const modalsOpenRef = useRef(false);
+
+  // Sync refs
+  useEffect(() => { productsRef.current = products; }, [products]);
+  useEffect(() => { modalsOpenRef.current = !!(scannedProduct || zeroProduct); }, [scannedProduct, zeroProduct]);
 
   const loadProducts = async () => {
     setLoading(true);
@@ -43,10 +49,11 @@ function StoreList() {
     const ean = code.trim();
     if (!ean) return;
 
-    const found = products.find(p => (p.ean === ean || p.parkod === ean) && p.qty_sent === null);
+    const prods = productsRef.current;
+    const found = prods.find(p => (p.ean === ean || p.parkod === ean) && p.qty_sent === null);
 
     if (!found) {
-      const alreadyDone = products.find(p => (p.ean === ean || p.parkod === ean) && p.qty_sent !== null);
+      const alreadyDone = prods.find(p => (p.ean === ean || p.parkod === ean) && p.qty_sent !== null);
       if (alreadyDone) {
         showMsg(`"${alreadyDone.label}" a déjà été confirmé (${alreadyDone.qty_sent} envoyés)`, 'warning');
       } else {
@@ -63,11 +70,11 @@ function StoreList() {
       qtyInputRef.current?.focus();
       qtyInputRef.current?.select();
     }, 100);
-  }, [products]);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (scannedProduct || zeroProduct) return;
+      if (modalsOpenRef.current) return;
       const tag = e.target.tagName.toLowerCase();
       if (tag === 'input' || tag === 'textarea') return;
 
@@ -99,7 +106,7 @@ function StoreList() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [scannedProduct, zeroProduct, processScannedCode]);
+  }, [processScannedCode]);
 
   const handleConfirm = async (e) => {
     e.preventDefault();

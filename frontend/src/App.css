@@ -527,8 +527,7 @@ tr.diff-pending { background: var(--gray-50) !important; }
 .scan-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(26,35,50,0.6);
-  backdrop-filter: blur(4px);
+  background: rgba(26,35,50,0.65);
   display: flex;
   align-items: center;
   justify-content: center;
