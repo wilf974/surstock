@@ -420,6 +420,15 @@ tr.diff-pending { background: var(--gray-50) !important; }
   font-size: 16px;
 }
 
+.camera-video {
+  width: 100%;
+  border-radius: var(--radius);
+  display: block;
+  background: #000;
+  max-height: 50vh;
+  object-fit: cover;
+}
+
 .camera-viewport {
   width: 100%;
   border-radius: var(--radius);
@@ -429,6 +438,10 @@ tr.diff-pending { background: var(--gray-50) !important; }
 .camera-viewport video {
   width: 100% !important;
   border-radius: var(--radius);
+}
+
+#camera-scanner-fallback video {
+  max-height: 50vh !important;
 }
 
 .camera-btn {

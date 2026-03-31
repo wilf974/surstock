@@ -151,29 +151,95 @@ const ProductCard = memo(function ProductCard({ p, onZero }) {
 // Scanner caméra mobile
 // ──────────────────────────────────────────────
 function CameraScanner({ onScan, onClose }) {
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
   const scannerRef = useRef(null);
-  const containerRef = useRef(null);
+  const [error, setError] = useState(null);
+
+  const stopAll = useCallback(() => {
+    if (scannerRef.current) {
+      scannerRef.current.stop().catch(() => {});
+      scannerRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+  }, []);
+
+  const handleClose = useCallback(() => {
+    stopAll();
+    onClose();
+  }, [stopAll, onClose]);
 
   useEffect(() => {
-    const scannerId = 'camera-scanner-region';
-    const html5Qrcode = new Html5Qrcode(scannerId);
-    scannerRef.current = html5Qrcode;
+    let cancelled = false;
 
-    html5Qrcode.start(
-      { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 280, height: 120 }, aspectRatio: 1.0 },
-      (decodedText) => {
-        html5Qrcode.stop().catch(() => {});
-        onScan(decodedText);
-      },
-      () => {}
-    ).catch((err) => {
-      console.error('Erreur caméra:', err);
-      onClose();
-    });
+    async function startCamera() {
+      try {
+        // Demander la caméra directement via getUserMedia (meilleur support iOS)
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
+        });
+
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
+        streamRef.current = stream;
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.setAttribute('playsinline', 'true');
+          videoRef.current.setAttribute('autoplay', 'true');
+          await videoRef.current.play();
+        }
+
+        // Lancer le scanner sur le flux vidéo
+        const html5Qrcode = new Html5Qrcode('camera-scanner-hidden');
+        scannerRef.current = html5Qrcode;
+
+        await html5Qrcode.start(
+          { facingMode: 'environment' },
+          { fps: 15, qrbox: { width: 280, height: 100 } },
+          (decodedText) => {
+            stopAll();
+            onScan(decodedText);
+          },
+          () => {}
+        );
+
+        // Cacher le player créé par html5-qrcode et montrer le notre
+        const lib = document.getElementById('camera-scanner-hidden');
+        if (lib) lib.style.display = 'none';
+
+      } catch (err) {
+        console.error('Erreur caméra:', err);
+        if (!cancelled) {
+          // Fallback : utiliser directement html5-qrcode sans getUserMedia
+          try {
+            const html5Qrcode = new Html5Qrcode('camera-scanner-fallback');
+            scannerRef.current = html5Qrcode;
+            await html5Qrcode.start(
+              { facingMode: 'environment' },
+              { fps: 15, qrbox: { width: 280, height: 100 } },
+              (decodedText) => {
+                html5Qrcode.stop().catch(() => {});
+                onScan(decodedText);
+              },
+              () => {}
+            );
+          } catch (err2) {
+            console.error('Erreur fallback:', err2);
+            setError('Impossible d\'accéder à la caméra. Vérifiez les permissions.');
+          }
+        }
+      }
+    }
+
+    startCamera();
 
     return () => {
-      html5Qrcode.stop().catch(() => {});
+      cancelled = true;
+      stopAll();
     };
   }, []);
 
@@ -182,9 +248,20 @@ function CameraScanner({ onScan, onClose }) {
       <div className="camera-container">
         <div className="camera-header">
           <span>Scanner un code-barres</span>
-          <button className="btn btn-secondary btn-small" onClick={onClose}>Fermer</button>
+          <button className="btn btn-danger btn-small" onClick={handleClose}>Fermer</button>
         </div>
-        <div id="camera-scanner-region" className="camera-viewport"></div>
+        {error ? (
+          <div className="alert alert-error">{error}</div>
+        ) : (
+          <>
+            <video ref={videoRef} className="camera-video" playsInline autoPlay muted />
+            <div id="camera-scanner-hidden" style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}></div>
+            <div id="camera-scanner-fallback" className="camera-viewport"></div>
+            <p style={{ color: 'white', textAlign: 'center', marginTop: 12, fontSize: 14, opacity: 0.7 }}>
+              Pointez vers un code-barres
+            </p>
+          </>
+        )}
       </div>
     </div>,
     document.body
