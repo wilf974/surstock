@@ -1,49 +1,63 @@
-import { useState, useEffect, useRef, useCallback, memo, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../api';
 
-// Popup "Valider à 0" isolé — son state ne re-render PAS la liste
-const ZeroModal = forwardRef(function ZeroModal({ onConfirmed, onMessage }, ref) {
+// ──────────────────────────────────────────────
+// Popup "Valider à 0" — rendu via Portal, hors de l'arbre StoreList
+// ──────────────────────────────────────────────
+function ZeroModalPortal() {
   const [product, setProduct] = useState(null);
   const [code, setCode] = useState('');
+  const [message, setMessage] = useState(null);
   const inputRef = useRef(null);
+  const callbackRef = useRef(null);
 
-  useImperativeHandle(ref, () => ({
-    open(p) {
-      setProduct(p);
-      setCode('');
-    },
-    isOpen() { return !!product; }
-  }));
+  // Exposer open/isOpen globalement
+  useEffect(() => {
+    window.__zeroModal = {
+      open(p, onDone) {
+        callbackRef.current = onDone;
+        setProduct(p);
+        setCode('');
+      },
+      isOpen() { return !!product; }
+    };
+    return () => { window.__zeroModal = null; };
+  });
 
   useEffect(() => {
     if (product) {
+      // Double rAF pour être sûr que le DOM est peint
       requestAnimationFrame(() => {
-        inputRef.current?.focus();
+        requestAnimationFrame(() => {
+          inputRef.current?.focus();
+        });
       });
     }
   }, [product]);
 
   if (!product) return null;
 
-  const close = () => setProduct(null);
+  const close = () => { setProduct(null); setMessage(null); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (code !== '123456') {
-      onMessage('Code incorrect', 'error');
+      setMessage('Code incorrect');
       return;
     }
     try {
       await api.confirmScan(product.id, 0);
-      onMessage(`${product.label} validé à 0`, 'success');
+      const label = product.label;
       setProduct(null);
-      onConfirmed();
+      setMessage(null);
+      callbackRef.current?.(label);
     } catch {
-      onMessage('Erreur lors de la validation', 'error');
+      setMessage('Erreur lors de la validation');
     }
   };
 
-  return (
+  return createPortal(
     <div className="scan-modal-overlay" onClick={close}>
       <div className="scan-modal" onClick={(e) => e.stopPropagation()}>
         <div className="scan-modal-header">Valider à zéro</div>
@@ -52,6 +66,7 @@ const ZeroModal = forwardRef(function ZeroModal({ onConfirmed, onMessage }, ref)
             <span className="product-info-label">Produit</span>
             <span className="product-info-value product-name">{product.label}</span>
           </div>
+          {message && <div className="alert alert-error" style={{ marginTop: 12 }}>{message}</div>}
           <form onSubmit={handleSubmit} className="confirm-form">
             <label className="confirm-label">
               Code de validation
@@ -66,15 +81,17 @@ const ZeroModal = forwardRef(function ZeroModal({ onConfirmed, onMessage }, ref)
           </form>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
-});
+}
 
-// Ligne produit mémorisée
-const ProductRow = memo(function ProductRow({ p, isHighlighted, highlightedRowRef, onZero }) {
+// ──────────────────────────────────────────────
+// Ligne tableau (desktop) — mémorisée
+// ──────────────────────────────────────────────
+const ProductRow = memo(function ProductRow({ p, onZero }) {
   return (
-    <tr ref={isHighlighted ? highlightedRowRef : null}
-      className={isHighlighted ? 'row-highlighted' : ''}>
+    <tr>
       <td className="ean-cell">{p.ean}</td>
       <td className="ean-cell">{p.parkod || '—'}</td>
       <td>{p.label}</td>
@@ -93,11 +110,12 @@ const ProductRow = memo(function ProductRow({ p, isHighlighted, highlightedRowRe
   );
 });
 
-// Card produit mémorisée
-const ProductCard = memo(function ProductCard({ p, isHighlighted, highlightedRowRef, onZero }) {
+// ──────────────────────────────────────────────
+// Card (mobile) — mémorisée
+// ──────────────────────────────────────────────
+const ProductCard = memo(function ProductCard({ p, onZero }) {
   return (
-    <div ref={isHighlighted ? highlightedRowRef : null}
-      className={`product-card-item ${p.qty_sent !== null ? 'status-confirmed' : 'status-pending'} ${isHighlighted ? 'card-highlighted' : ''}`}>
+    <div className={`product-card-item ${p.qty_sent !== null ? 'status-confirmed' : 'status-pending'}`}>
       <div className="card-item-header">
         <span className="card-item-label">{p.label}</span>
         {p.qty_sent !== null
@@ -128,6 +146,11 @@ const ProductCard = memo(function ProductCard({ p, isHighlighted, highlightedRow
   );
 });
 
+// ──────────────────────────────────────────────
+// Composant principal
+// ──────────────────────────────────────────────
+const PAGE_SIZE = 100;
+
 function StoreList() {
   const [products, setProducts] = useState([]);
   const [filter, setFilter] = useState('all');
@@ -136,16 +159,31 @@ function StoreList() {
   const [scannedProduct, setScannedProduct] = useState(null);
   const [qtySent, setQtySent] = useState('');
   const [message, setMessage] = useState(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const qtyInputRef = useRef(null);
-  const highlightedRowRef = useRef(null);
   const scanBufferRef = useRef('');
   const scanTimeoutRef = useRef(null);
   const productsRef = useRef(products);
   const scannedRef = useRef(false);
-  const zeroModalRef = useRef(null);
+  const sentinelRef = useRef(null);
 
   useEffect(() => { productsRef.current = products; }, [products]);
   useEffect(() => { scannedRef.current = !!scannedProduct; }, [scannedProduct]);
+
+  // Infinite scroll
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setVisibleCount(prev => prev + PAGE_SIZE);
+      }
+    }, { rootMargin: '200px' });
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [loading]);
+
+  // Reset visible count on filter change
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [filter]);
 
   const loadProducts = async () => {
     setLoading(true);
@@ -168,8 +206,11 @@ function StoreList() {
   }, []);
 
   const openZeroModal = useCallback((product) => {
-    zeroModalRef.current?.open(product);
-  }, []);
+    window.__zeroModal?.open(product, (label) => {
+      showMsg(`${label} validé à 0`, 'success');
+      loadProducts();
+    });
+  }, [showMsg]);
 
   const processScannedCode = useCallback((code) => {
     const ean = code.trim();
@@ -188,7 +229,6 @@ function StoreList() {
     setScannedProduct(found);
     setQtySent(String(found.qty_requested));
     setTimeout(() => {
-      highlightedRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       qtyInputRef.current?.focus();
       qtyInputRef.current?.select();
     }, 100);
@@ -196,7 +236,7 @@ function StoreList() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (scannedRef.current || zeroModalRef.current?.isOpen()) return;
+      if (scannedRef.current || window.__zeroModal?.isOpen()) return;
       const tag = e.target.tagName.toLowerCase();
       if (tag === 'input' || tag === 'textarea') return;
 
@@ -245,8 +285,10 @@ function StoreList() {
 
   const handleCancelScan = () => { setScannedProduct(null); setQtySent(''); };
 
-  const confirmed = products.filter(p => p.qty_sent !== null).length;
-  const pending = products.filter(p => p.qty_sent === null).length;
+  const confirmed = useMemo(() => products.filter(p => p.qty_sent !== null).length, [products]);
+  const pending = useMemo(() => products.filter(p => p.qty_sent === null).length, [products]);
+  const visibleProducts = useMemo(() => products.slice(0, visibleCount), [products, visibleCount]);
+  const hasMore = visibleCount < products.length;
 
   return (
     <div className="page store-list">
@@ -290,7 +332,7 @@ function StoreList() {
                 <label className="confirm-label">
                   Quantité envoyée
                   <input ref={qtyInputRef} type="number" min="0" value={qtySent}
-                    onChange={(e) => setQtySent(e.target.value)} className="qty-input" />
+                    onChange={(e) => setQtySent(e.target.value)} className="qty-input" autoComplete="off" />
                 </label>
                 <div className="confirm-buttons">
                   <button type="submit" className="btn btn-success btn-large">Confirmer</button>
@@ -302,8 +344,8 @@ function StoreList() {
         </div>
       )}
 
-      {/* Popup zéro — composant isolé, pas de re-render de la liste */}
-      <ZeroModal ref={zeroModalRef} onConfirmed={loadProducts} onMessage={showMsg} />
+      {/* Portal popup zéro — complètement hors de l'arbre StoreList */}
+      <ZeroModalPortal />
 
       {/* Résumé */}
       <div className="summary-cards">
@@ -347,23 +389,24 @@ function StoreList() {
               </tr>
             </thead>
             <tbody>
-              {products.map((p) => (
-                <ProductRow key={p.id} p={p}
-                  isHighlighted={scannedProduct?.id === p.id}
-                  highlightedRowRef={highlightedRowRef}
-                  onZero={openZeroModal} />
+              {visibleProducts.map((p) => (
+                <ProductRow key={p.id} p={p} onZero={openZeroModal} />
               ))}
             </tbody>
           </table>
 
           <div className="card-list">
-            {products.map((p) => (
-              <ProductCard key={p.id} p={p}
-                isHighlighted={scannedProduct?.id === p.id}
-                highlightedRowRef={highlightedRowRef}
-                onZero={openZeroModal} />
+            {visibleProducts.map((p) => (
+              <ProductCard key={p.id} p={p} onZero={openZeroModal} />
             ))}
           </div>
+
+          {/* Sentinel pour infinite scroll */}
+          {hasMore && (
+            <div ref={sentinelRef} className="loading-text">
+              {products.length - visibleCount} produits restants...
+            </div>
+          )}
         </>
       )}
     </div>
