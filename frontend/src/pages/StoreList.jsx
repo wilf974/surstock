@@ -289,6 +289,40 @@ function StoreList() {
 
   const handleCancelScan = () => { setScannedProduct(null); setQtySent(''); };
 
+  const handlePrint = useCallback(() => {
+    const rows = products.map(p =>
+      `<tr>
+        <td>${p.ean}</td>
+        <td>${p.parkod || '—'}</td>
+        <td>${p.label}</td>
+        <td style="text-align:center">${p.qty_requested}</td>
+      </tr>`
+    ).join('');
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Liste produits - Surstock</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; }
+  h1 { font-size: 16px; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #333; padding: 4px 8px; text-align: left; }
+  th { background: #2c3e50; color: white; font-size: 11px; }
+  td { font-size: 11px; }
+  @media print { body { margin: 5mm; } }
+</style></head><body>
+<h1>Liste des produits — Surstock (${products.length} produits)</h1>
+<table>
+  <thead><tr><th>EAN</th><th>PARKOD</th><th>Libellé</th><th>Qté</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+</body></html>`;
+
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    w.print();
+  }, [products]);
+
   const confirmed = useMemo(() => products.filter(p => p.qty_sent !== null).length, [products]);
   const pending = useMemo(() => products.filter(p => p.qty_sent === null).length, [products]);
   const visibleProducts = useMemo(() => products.slice(0, visibleCount), [products, visibleCount]);
@@ -394,6 +428,7 @@ function StoreList() {
         <button className={`btn ${filter === 'pending' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('pending')}>En attente</button>
         <button className={`btn ${filter === 'confirmed' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter('confirmed')}>Confirmés</button>
         <button className="btn btn-secondary" onClick={loadProducts}>Actualiser</button>
+        <button className="btn btn-secondary" onClick={handlePrint}>Imprimer</button>
       </div>
 
       {loading ? (
