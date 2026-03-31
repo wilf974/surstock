@@ -38,6 +38,16 @@ export const api = {
   confirmScan: (id, qty_sent) => request(`/scan/${id}/confirm`, { method: 'PATCH', body: JSON.stringify({ qty_sent }) }),
   resetScan: (id) => request(`/scan/${id}/reset`, { method: 'PATCH' }),
 
+  // Dépôt
+  getDepotProductByEan: (ean) => request(`/depot/ean/${ean}`),
+  scanDepot: (id) => request(`/depot/${id}/scan`, { method: 'PATCH' }),
+  resetReceipt: (id) => request(`/depot/${id}/reset`, { method: 'PATCH' }),
+
   // Dashboard
   getSummary: () => request('/dashboard/summary'),
+
+  // Settings
+  getSmtpSettings: () => request('/settings/smtp'),
+  saveSmtpSettings: (data) => request('/settings/smtp', { method: 'PUT', body: JSON.stringify(data) }),
+  testSmtp: () => request('/settings/smtp/test', { method: 'POST' }),
 };

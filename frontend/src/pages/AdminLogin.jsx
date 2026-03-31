@@ -7,8 +7,9 @@ function AdminLogin({ onLogin, role = 'admin' }) {
   const [loading, setLoading] = useState(false);
 
   const isStore = role === 'store';
-  const title = isStore ? 'Maison Blanche' : 'Administration';
-  const placeholder = isStore ? 'Entrez le mot de passe magasin' : 'Entrez le mot de passe admin';
+  const isDepot = role === 'depot';
+  const title = isStore ? 'Maison Blanche' : isDepot ? 'Dépôt' : 'Administration';
+  const placeholder = isStore ? 'Entrez le mot de passe magasin' : isDepot ? 'Entrez le mot de passe dépôt' : 'Entrez le mot de passe admin';
 
   const handleSubmit = async (e) => {
     e.preventDefault();

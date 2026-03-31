@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"C:\\\\Users\\\\w.maillot\\\\Documents\\\\Surstock\")",
+      "Bash(command -v ls)",
+      "Bash(cd:*)",
+      "Bash(powershell -Command \"New-Item -ItemType Directory -Force -Path 'C:\\\\Users\\\\w.maillot\\\\Documents\\\\Surstock\\\\backend\\\\routes','C:\\\\Users\\\\w.maillot\\\\Documents\\\\Surstock\\\\frontend\\\\src\\\\pages','C:\\\\Users\\\\w.maillot\\\\Documents\\\\Surstock\\\\frontend\\\\src\\\\components','C:\\\\Users\\\\w.maillot\\\\Documents\\\\Surstock\\\\frontend\\\\public'\")",
+      "Bash(npm install:*)",
+      "Bash(powershell -Command \"cd 'C:\\\\Users\\\\w.maillot\\\\Documents\\\\Surstock\\\\backend'; npm install 2>&1\")",
+      "Bash(powershell -Command \"Remove-Item -Recurse -Force 'C:\\\\Users\\\\w.maillot\\\\Documents\\\\Surstock\\\\backend\\\\node_modules' -ErrorAction SilentlyContinue; cd 'C:\\\\Users\\\\w.maillot\\\\Documents\\\\Surstock\\\\backend'; npm install 2>&1\")",
+      "Bash(powershell -Command \"cd 'C:\\\\Users\\\\w.maillot\\\\Documents\\\\Surstock\\\\frontend'; npm install 2>&1\")",
+      "Bash(powershell -Command \"cd 'C:\\\\Users\\\\w.maillot\\\\Documents\\\\Surstock\\\\backend'; Start-Process -NoNewWindow -FilePath 'node' -ArgumentList 'server.js' -PassThru | Select-Object -Property Id; Start-Sleep -Seconds 2; Invoke-RestMethod -Uri 'http://localhost:3001/api/products' -Method GET 2>&1\")",
+      "Bash(powershell -Command \"Invoke-RestMethod -Uri 'http://localhost:3001/api/products' -Method POST -ContentType 'application/json' -Body '{\\\\\"ean\\\\\":\\\\\"3017620422003\\\\\",\\\\\"label\\\\\":\\\\\"Nutella 400g\\\\\",\\\\\"qty_requested\\\\\":24}' 2>&1\")",
+      "Bash(powershell -Command \"Invoke-RestMethod -Uri 'http://localhost:3001/api/products' -Method GET | ConvertTo-Json 2>&1\")",
+      "Bash(powershell -Command \"Invoke-RestMethod -Uri 'http://localhost:3001/api/products/ean/3017620422003' -Method GET | ConvertTo-Json 2>&1\")",
+      "Bash(powershell -Command \"Invoke-RestMethod -Uri 'http://localhost:3001/api/scan/1/confirm' -Method PATCH -ContentType 'application/json' -Body '{\\\\\"qty_sent\\\\\":20}' | ConvertTo-Json 2>&1\")",
+      "Bash(powershell -Command \"Invoke-RestMethod -Uri 'http://localhost:3001/api/dashboard/summary' -Method GET | ConvertTo-Json -Depth 3 2>&1\")",
+      "Bash(powershell -Command \"Invoke-RestMethod -Uri 'http://localhost:3001/api/products' -Method DELETE | ConvertTo-Json; Stop-Process -Id 42812 -ErrorAction SilentlyContinue 2>&1\")",
+      "Bash(powershell -Command \"cd 'C:\\\\Users\\\\w.maillot\\\\Documents\\\\Surstock\\\\backend'; Start-Process -NoNewWindow -FilePath 'node' -ArgumentList 'server.js'; Start-Sleep -Seconds 1; cd 'C:\\\\Users\\\\w.maillot\\\\Documents\\\\Surstock\\\\frontend'; npx vite --host 2>&1\")",
+      "Bash(powershell -Command \"Start-Sleep -Seconds 5; Get-Content 'C:\\\\Users\\\\adm.loc\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-w-maillot-Documents-Surstock\\\\1cb4e3ac-37b8-41c9-8ff4-976117072e51\\\\tasks\\\\b3pvr39k8.output' -Tail 10 2>&1\")",
+      "Bash(node node_modules/vite/bin/vite.js --port 5173)",
+      "Bash(curl:*)",
+      "Bash(node -e \"const initSqlJs = require\\(''sql.js''\\); initSqlJs\\(\\).then\\(SQL => { const db = new SQL.Database\\(\\); db.run\\(''CREATE TABLE t \\(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT\\)''\\); db.run\\(''INSERT INTO t \\(name\\) VALUES \\(?\\)'', [''test'']\\); const r = db.exec\\(''SELECT last_insert_rowid\\(\\) as id''\\); console.log\\(''exec result:'', JSON.stringify\\(r\\)\\); console.log\\(''rowid:'', r[0].values[0][0]\\); console.log\\(''type:'', typeof r[0].values[0][0]\\); }\\)\")",
+      "Bash(node -e \"const initSqlJs = require\\(''sql.js''\\); initSqlJs\\(\\).then\\(SQL => { const db = new SQL.Database\\(\\); db.run\\(''CREATE TABLE t \\(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT\\)''\\); db.run\\(''INSERT INTO t \\(name\\) VALUES \\(?\\)'', [''test'']\\); const r = db.exec\\(''SELECT last_insert_rowid\\(\\) as id''\\); console.log\\(''result:'', JSON.stringify\\(r\\)\\); const stmt = db.prepare\\(''SELECT * FROM t WHERE id = ?''\\); stmt.bind\\([r[0].values[0][0]]\\); console.log\\(''step:'', stmt.step\\(\\)\\); console.log\\(''obj:'', JSON.stringify\\(stmt.getAsObject\\(\\)\\)\\); stmt.free\\(\\); }\\)\")",
+      "Bash(netstat -ano)",
+      "Bash(findstr :3001)",
+      "Bash(findstr LISTENING)",
+      "Bash(taskkill:*)",
+      "Bash(node server.js)",
+      "Bash(node:*)",
+      "Bash(docker compose:*)",
+      "Bash(docker-compose version:*)",
+      "Bash(where docker:*)",
+      "Bash(where docker-compose:*)",
+      "Bash(\"C:/Program Files/Docker/Docker/resources/bin/docker\" compose version 2>&1)",
+      "Bash(git config:*)"
+    ]
+  }
+}

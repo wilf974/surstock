@@ -41,7 +41,19 @@ async function getDb() {
     // La colonne existe déjà, on ignore
   }
 
+  // Migration : ajouter les colonnes dépôt
+  try { db.run('ALTER TABLE products ADD COLUMN qty_received INTEGER DEFAULT NULL'); } catch (e) {}
+  try { db.run('ALTER TABLE products ADD COLUMN received_at TEXT DEFAULT NULL'); } catch (e) {}
+
   db.run(`CREATE INDEX IF NOT EXISTS idx_products_ean ON products(ean)`);
+
+  // Table settings (clé-valeur pour config SMTP etc.)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )
+  `);
 
   saveDb();
   return db;

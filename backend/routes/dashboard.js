@@ -18,13 +18,20 @@ router.get('/summary', (req, res) => {
     .filter(p => p.qty_sent !== null)
     .reduce((sum, p) => sum + p.qty_sent, 0);
 
+  const received = products.filter(p => p.qty_received !== null).length;
+  const totalReceived = products
+    .filter(p => p.qty_received !== null)
+    .reduce((sum, p) => sum + p.qty_received, 0);
+
   res.json({
     total,
     confirmed,
     pending,
     withDifference,
+    received,
     totalRequested,
     totalSent,
+    totalReceived,
     products: products.map(p => ({
       ...p,
       diff: p.qty_sent !== null ? p.qty_sent - p.qty_requested : null

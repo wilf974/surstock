@@ -3,12 +3,14 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import AdminInsert from './pages/AdminInsert';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminSettings from './pages/AdminSettings';
 import AdminLogin from './pages/AdminLogin';
 import StoreList from './pages/StoreList';
+import DepotList from './pages/DepotList';
 import { api } from './api';
 
 function App() {
-  const [authRole, setAuthRole] = useState(null); // null, 'store', 'admin'
+  const [authRole, setAuthRole] = useState(null);
   const [checking, setChecking] = useState(true);
 
   const checkAuth = async () => {
@@ -30,13 +32,9 @@ function App() {
     }
   };
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
+  useEffect(() => { checkAuth(); }, []);
 
-  const handleLogin = (role) => {
-    setAuthRole(role);
-  };
+  const handleLogin = (role) => setAuthRole(role);
 
   const handleLogout = async () => {
     try { await api.logout(); } catch {}
@@ -47,10 +45,11 @@ function App() {
 
   const isAdmin = authRole === 'admin';
   const isStore = authRole === 'store' || authRole === 'admin';
+  const isDepot = authRole === 'depot' || authRole === 'admin';
 
   return (
     <div className="app">
-      <Navbar isAdmin={isAdmin} isStore={isStore} onLogout={handleLogout} />
+      <Navbar isAdmin={isAdmin} isStore={isStore} isDepot={isDepot} onLogout={handleLogout} />
       <main className="main-content">
         {checking ? (
           <p className="loading-text">Chargement...</p>
@@ -63,10 +62,16 @@ function App() {
             <Route path="/admin/tableau-de-bord" element={
               isAdmin ? <AdminDashboard /> : <AdminLogin onLogin={handleLogin} role="admin" />
             } />
+            <Route path="/admin/reglages" element={
+              isAdmin ? <AdminSettings /> : <AdminLogin onLogin={handleLogin} role="admin" />
+            } />
             <Route path="/magasin/liste" element={
               isStore ? <StoreList /> : <AdminLogin onLogin={handleLogin} role="store" />
             } />
             <Route path="/magasin/scanner" element={<Navigate to="/magasin/liste" replace />} />
+            <Route path="/depot/liste" element={
+              isDepot ? <DepotList /> : <AdminLogin onLogin={handleLogin} role="depot" />
+            } />
           </Routes>
         )}
       </main>

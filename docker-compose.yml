@@ -8,6 +8,8 @@ services:
       - DB_DIR=/app/backend/data
       - ADMIN_PASSWORD_HASH=21a7d2207af0e4b7f595e85eff6861732df082461584b89f6c68bbfaacb67f59
       - STORE_PASSWORD_HASH=0edee08b977a54e851813d6bcedd30d9912f699ae3c5fe422a968cc171c83c15
+      - DEPOT_PASSWORD_HASH=8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92
+      - SETTINGS_SECRET=s0m3R4nd0mS3cr3tK3yF0rEncrypt10n
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.surstock.rule=Host(`sur-stock.myorigines.tech`)"

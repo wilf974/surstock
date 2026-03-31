@@ -475,6 +475,7 @@ tr.diff-pending { background: var(--gray-50) !important; }
 .summary-card.card-success { border-top-color: var(--green); }
 .summary-card.card-warning { border-top-color: var(--orange); }
 .summary-card.card-danger { border-top-color: var(--red); }
+.summary-card.card-info { border-top-color: #7c4dff; }
 
 .summary-number {
   font-size: 32px;
@@ -548,6 +549,8 @@ tr.diff-pending { background: var(--gray-50) !important; }
 
 .badge-success { background: var(--green-pale); color: #1a7340; }
 .badge-pending { background: var(--orange-pale); color: #8a6111; }
+.badge-received { background: #f3e8ff; color: #6b21a8; }
+.badge-danger { background: var(--red-pale); color: #a5281b; }
 
 /* ============================================
    SCAN INDICATORS

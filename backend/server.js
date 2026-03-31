@@ -7,8 +7,10 @@ const { getDb } = require('./db');
 
 const productsRoutes = require('./routes/products');
 const scanRoutes = require('./routes/scan');
+const depotRoutes = require('./routes/depot');
 const dashboardRoutes = require('./routes/dashboard');
-const { router: authRoutes, requireAdmin, requireStore } = require('./routes/auth');
+const settingsRoutes = require('./routes/settings');
+const { router: authRoutes, requireAdmin, requireStore, requireDepot } = require('./routes/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -55,7 +57,10 @@ app.use('/api/products', (req, res, next) => {
 }, productsRoutes);
 app.use('/api/scan/:id/reset', requireAdmin);
 app.use('/api/scan', requireStore, scanRoutes);
+app.use('/api/depot/:id/reset', requireAdmin);
+app.use('/api/depot', requireDepot, depotRoutes);
 app.use('/api/dashboard', requireAdmin, dashboardRoutes);
+app.use('/api/settings', requireAdmin, settingsRoutes);
 
 // Fallback vers le frontend pour les routes SPA
 app.get('*', (req, res) => {

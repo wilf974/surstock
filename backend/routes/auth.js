@@ -5,8 +5,9 @@ const router = express.Router();
 // Hash SHA-256 des mots de passe (via variables d'environnement)
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || 'not_set';
 const STORE_PASSWORD_HASH = process.env.STORE_PASSWORD_HASH || 'not_set';
+const DEPOT_PASSWORD_HASH = process.env.DEPOT_PASSWORD_HASH || 'not_set';
 
-// Tokens actifs en mémoire : token -> role ('admin' ou 'store')
+// Tokens actifs en mémoire : token -> role ('admin', 'store' ou 'depot')
 const activeTokens = new Map();
 
 // POST /api/auth/login
@@ -19,6 +20,9 @@ router.post('/login', (req, res) => {
   if (role === 'store') {
     expectedHash = STORE_PASSWORD_HASH;
     tokenRole = 'store';
+  } else if (role === 'depot') {
+    expectedHash = DEPOT_PASSWORD_HASH;
+    tokenRole = 'depot';
   } else {
     expectedHash = ADMIN_PASSWORD_HASH;
     tokenRole = 'admin';
@@ -62,10 +66,21 @@ function requireAdmin(req, res, next) {
 // Middleware pour protéger les routes magasin (admin OU store)
 function requireStore(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token || !activeTokens.has(token)) {
+  const role = activeTokens.get(token);
+  if (!token || !role || role === 'depot') {
     return res.status(401).json({ error: 'Authentification requise' });
   }
   next();
 }
 
-module.exports = { router, requireAdmin, requireStore };
+// Middleware pour protéger les routes dépôt (admin OU depot)
+function requireDepot(req, res, next) {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  const role = activeTokens.get(token);
+  if (!token || (role !== 'depot' && role !== 'admin')) {
+    return res.status(401).json({ error: 'Authentification requise' });
+  }
+  next();
+}
+
+module.exports = { router, requireAdmin, requireStore, requireDepot };

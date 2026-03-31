@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 
-function Navbar({ isAdmin, isStore, onLogout }) {
+function Navbar({ isAdmin, isStore, isDepot, onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const closeMenu = () => setMenuOpen(false);
@@ -33,6 +33,12 @@ function Navbar({ isAdmin, isStore, onLogout }) {
             </NavLink>
           </div>
           <div className="nav-section">
+            <span className="nav-section-label">Dépôt</span>
+            <NavLink to="/depot/liste" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={closeMenu}>
+              Réception
+            </NavLink>
+          </div>
+          <div className="nav-section">
             <span className="nav-section-label">Admin</span>
             <NavLink to="/admin/saisie" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={closeMenu}>
               Saisie
@@ -40,8 +46,11 @@ function Navbar({ isAdmin, isStore, onLogout }) {
             <NavLink to="/admin/tableau-de-bord" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={closeMenu}>
               Tableau de bord
             </NavLink>
+            <NavLink to="/admin/reglages" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={closeMenu}>
+              Réglages
+            </NavLink>
           </div>
-          {(isAdmin || isStore) && (
+          {(isAdmin || isStore || isDepot) && (
             <button className="nav-logout" onClick={() => { onLogout(); closeMenu(); }}>
               Déconnexion
             </button>

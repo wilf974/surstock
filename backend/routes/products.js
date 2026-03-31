@@ -11,6 +11,10 @@ router.get('/', (req, res) => {
     query += ' WHERE qty_sent IS NULL';
   } else if (status === 'confirmed') {
     query += ' WHERE qty_sent IS NOT NULL';
+  } else if (status === 'awaiting_receipt') {
+    query += ' WHERE qty_sent IS NOT NULL AND qty_received IS NULL';
+  } else if (status === 'received') {
+    query += ' WHERE qty_received IS NOT NULL';
   }
   query += ' ORDER BY created_at DESC';
 
