@@ -322,7 +322,7 @@ body {
 .qty-cell { text-align: center; font-weight: 700; font-size: 15px; }
 .date-cell { font-size: 12px; color: var(--gray-400); }
 
-/* Diff row colors */
+/* Diff row colors (magasin) */
 tr.diff-ok { background: var(--green-pale) !important; }
 tr.diff-under { background: var(--red-pale) !important; }
 tr.diff-over { background: var(--orange-pale) !important; }
@@ -330,6 +330,67 @@ tr.diff-pending { background: var(--gray-50) !important; }
 .diff-cell { font-weight: 700; }
 .text-danger { color: var(--red); }
 .text-success { color: var(--green); }
+
+/* Dashboard row status (combiné magasin + dépôt) */
+tr.row-status-complete,
+.product-card-item.row-status-complete { background: #d4edda !important; border-left-color: var(--green) !important; }
+tr.row-status-sent,
+.product-card-item.row-status-sent { background: var(--blue-pale) !important; border-left-color: var(--blue) !important; }
+tr.row-status-pending,
+.product-card-item.row-status-pending { background: var(--gray-50) !important; border-left-color: var(--gray-400) !important; }
+tr.row-status-store-discrepancy,
+.product-card-item.row-status-store-discrepancy { background: var(--orange-pale) !important; border-left-color: var(--orange) !important; }
+tr.row-status-depot-discrepancy,
+.product-card-item.row-status-depot-discrepancy { background: var(--red-pale) !important; border-left-color: var(--red) !important; }
+
+tr.row-status-store-discrepancy,
+tr.row-status-depot-discrepancy { cursor: help; }
+
+/* Depot status cell */
+.depot-ok { color: var(--green); font-weight: 700; }
+.depot-none { color: var(--gray-400); }
+.depot-partial { color: var(--orange); font-weight: 700; }
+.depot-over { color: var(--red); font-weight: 700; }
+
+/* Légende */
+.legend-bar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--gray-600);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.legend-complete { background: #d4edda; border: 1px solid var(--green); }
+.legend-sent { background: var(--blue-pale); border: 1px solid var(--blue); }
+.legend-warning { background: var(--orange-pale); border: 1px solid var(--orange); }
+.legend-pending { background: var(--gray-100); border: 1px solid var(--gray-400); }
+
+/* Card detail (mobile tooltip equivalent) */
+.card-item-detail {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.04);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--red);
+  font-weight: 600;
+  white-space: pre-line;
+}
 
 /* ============================================
    MOBILE CARDS (replaces tables on small screens)

@@ -20,9 +20,7 @@ function AdminDashboard() {
     }
   };
 
-  useEffect(() => {
-    loadSummary();
-  }, []);
+  useEffect(() => { loadSummary(); }, []);
 
   if (loading || !summary) {
     return <div className="page"><p className="loading-text">Chargement...</p></div>;
@@ -74,25 +72,56 @@ function AdminDashboard() {
     }
   };
 
-  const getDiffClass = (product) => {
-    if (product.qty_sent === null) return 'diff-pending';
-    if (product.diff === 0) return 'diff-ok';
-    if (product.diff < 0) return 'diff-under';
-    return 'diff-over';
+  // Logique couleur de ligne combinant magasin + dépôt
+  const getRowClass = (p) => {
+    // Pas encore envoyé par le magasin
+    if (p.qty_sent === null) return 'row-status-pending';
+    // Réceptionné par le dépôt avec quantités OK partout
+    if (p.qty_received !== null && p.qty_received >= p.qty_sent) {
+      if (p.qty_received === p.qty_sent && p.diff === 0) return 'row-status-complete';
+      return 'row-status-depot-discrepancy';
+    }
+    // Envoyé mais pas encore réceptionné
+    if (p.qty_received === null || p.qty_received < p.qty_sent) {
+      if (p.diff !== 0) return 'row-status-store-discrepancy';
+      return 'row-status-sent';
+    }
+    return '';
   };
 
-  const getCardDiffClass = (product) => {
-    if (product.qty_sent === null) return 'card-diff-pending';
-    if (product.diff === 0) return 'card-diff-ok';
-    if (product.diff < 0) return 'card-diff-under';
-    return 'card-diff-over';
+  // Tooltip détaillé pour les écarts
+  const getTooltip = (p) => {
+    const parts = [];
+    if (p.qty_sent !== null && p.diff !== 0) {
+      parts.push(`Magasin: envoyé ${p.qty_sent} / demandé ${p.qty_requested} (écart ${p.diff > 0 ? '+' : ''}${p.diff})`);
+    }
+    if (p.qty_received !== null && p.qty_sent !== null && p.qty_received !== p.qty_sent) {
+      parts.push(`Dépôt: reçu ${p.qty_received} / envoyé ${p.qty_sent} (écart ${p.qty_received - p.qty_sent > 0 ? '+' : ''}${p.qty_received - p.qty_sent})`);
+    }
+    if (p.qty_received !== null && p.qty_received < p.qty_sent) {
+      parts.push(`Réception en cours: ${p.qty_received}/${p.qty_sent}`);
+    }
+    return parts.join('\n');
   };
 
-  const getDiffText = (product) => {
-    if (product.qty_sent === null) return '—';
-    if (product.diff === 0) return 'OK';
-    return product.diff > 0 ? `+${product.diff}` : Math.abs(product.diff);
+  const getDiffText = (p) => {
+    if (p.qty_sent === null) return '—';
+    if (p.diff === 0) return 'OK';
+    return p.diff > 0 ? `+${p.diff}` : Math.abs(p.diff);
   };
+
+  const getDepotStatus = (p) => {
+    if (p.qty_sent === null) return { text: '—', cls: '' };
+    if (p.qty_received === null) return { text: 'Non reçu', cls: 'depot-none' };
+    if (p.qty_received < p.qty_sent) return { text: `${p.qty_received}/${p.qty_sent}`, cls: 'depot-partial' };
+    if (p.qty_received === p.qty_sent) return { text: 'OK', cls: 'depot-ok' };
+    return { text: `${p.qty_received}/${p.qty_sent}`, cls: 'depot-over' };
+  };
+
+  // Compteurs
+  const depotDiscrepancy = filteredProducts.filter(p =>
+    p.qty_received !== null && p.qty_sent !== null && p.qty_received !== p.qty_sent
+  ).length;
 
   return (
     <div className="page admin-dashboard">
@@ -105,7 +134,7 @@ function AdminDashboard() {
         </div>
         <div className="summary-card card-success">
           <div className="summary-number">{summary.confirmed}</div>
-          <div className="summary-label">Confirmés</div>
+          <div className="summary-label">Envoyés</div>
         </div>
         <div className="summary-card card-warning">
           <div className="summary-number">{summary.pending}</div>
@@ -113,21 +142,27 @@ function AdminDashboard() {
         </div>
         <div className="summary-card card-danger">
           <div className="summary-number">{summary.withDifference}</div>
-          <div className="summary-label">Avec écart</div>
+          <div className="summary-label">Écart magasin</div>
         </div>
         <div className="summary-card card-info">
           <div className="summary-number">{summary.received || 0}</div>
           <div className="summary-label">Réceptionnés</div>
         </div>
+        {depotDiscrepancy > 0 && (
+          <div className="summary-card card-danger">
+            <div className="summary-number">{depotDiscrepancy}</div>
+            <div className="summary-label">Écart dépôt</div>
+          </div>
+        )}
       </div>
 
       <div className="totals-bar">
-        <span>Total demandé : <strong>{summary.totalRequested}</strong></span>
-        <span>Total envoyé : <strong>{summary.totalSent}</strong></span>
+        <span>Demandé : <strong>{summary.totalRequested}</strong></span>
+        <span>Envoyé : <strong>{summary.totalSent}</strong></span>
+        <span>Reçu : <strong>{summary.totalReceived || 0}</strong></span>
         <span>Écart global : <strong className={summary.totalSent - summary.totalRequested < 0 ? 'text-danger' : 'text-success'}>
           {summary.totalSent - summary.totalRequested}
         </strong></span>
-        <span>Total reçu : <strong>{summary.totalReceived || 0}</strong></span>
       </div>
 
       {message && <div className={`alert alert-${message.type}`}>{message.text}</div>}
@@ -139,6 +174,14 @@ function AdminDashboard() {
         <button className="btn btn-success" onClick={exportXlsx}>Export XLSX</button>
       </div>
 
+      {/* Légende */}
+      <div className="legend-bar">
+        <span className="legend-item"><span className="legend-dot legend-complete"></span> Tout OK</span>
+        <span className="legend-item"><span className="legend-dot legend-sent"></span> Envoyé (attente dépôt)</span>
+        <span className="legend-item"><span className="legend-dot legend-warning"></span> Écart détecté</span>
+        <span className="legend-item"><span className="legend-dot legend-pending"></span> En attente</span>
+      </div>
+
       {/* Tableau desktop */}
       <table className="table">
         <thead>
@@ -148,91 +191,82 @@ function AdminDashboard() {
             <th>Libellé</th>
             <th>Demandée</th>
             <th>Envoyée</th>
-            <th>Écart</th>
-            <th>Scanné le</th>
+            <th>Écart mag.</th>
             <th>Reçue</th>
-            <th>Reçu le</th>
+            <th>Statut dépôt</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {filteredProducts.map((p) => (
-            <tr key={p.id} className={getDiffClass(p)}>
-              <td className="ean-cell">{p.ean}</td>
-              <td className="ean-cell">{p.parkod || '—'}</td>
-              <td>{p.label}</td>
-              <td className="qty-cell">{p.qty_requested}</td>
-              <td className="qty-cell">{p.qty_sent !== null ? p.qty_sent : '—'}</td>
-              <td className="qty-cell diff-cell"><strong>{getDiffText(p)}</strong></td>
-              <td className="date-cell">
-                {p.scanned_at ? new Date(p.scanned_at).toLocaleString('fr-FR') : '—'}
-              </td>
-              <td className="qty-cell">{p.qty_received !== null ? p.qty_received : '—'}</td>
-              <td className="date-cell">
-                {p.received_at ? new Date(p.received_at).toLocaleString('fr-FR') : '—'}
-              </td>
-              <td>
-                {p.qty_sent !== null && p.qty_received === null && (
-                  <button className="btn btn-secondary btn-small" onClick={() => handleReset(p)}>Annuler envoi</button>
-                )}
-                {p.qty_received !== null && (
-                  <button className="btn btn-secondary btn-small" onClick={() => handleResetReceipt(p)}>Annuler réception</button>
-                )}
-              </td>
-            </tr>
-          ))}
+          {filteredProducts.map((p) => {
+            const tooltip = getTooltip(p);
+            const depot = getDepotStatus(p);
+            return (
+              <tr key={p.id} className={getRowClass(p)} title={tooltip}>
+                <td className="ean-cell">{p.ean}</td>
+                <td className="ean-cell">{p.parkod || '—'}</td>
+                <td>{p.label}</td>
+                <td className="qty-cell">{p.qty_requested}</td>
+                <td className="qty-cell">{p.qty_sent !== null ? p.qty_sent : '—'}</td>
+                <td className="qty-cell diff-cell"><strong>{getDiffText(p)}</strong></td>
+                <td className="qty-cell">{p.qty_received !== null ? p.qty_received : '—'}</td>
+                <td className={`qty-cell ${depot.cls}`}><strong>{depot.text}</strong></td>
+                <td>
+                  {p.qty_sent !== null && p.qty_received === null && (
+                    <button className="btn btn-secondary btn-small" onClick={() => handleReset(p)}>Annuler envoi</button>
+                  )}
+                  {p.qty_received !== null && (
+                    <button className="btn btn-secondary btn-small" onClick={() => handleResetReceipt(p)}>Annuler réception</button>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 
       {/* Cards mobile */}
       <div className="card-list">
-        {filteredProducts.map((p) => (
-          <div key={p.id} className={`product-card-item ${getCardDiffClass(p)}`}>
-            <div className="card-item-header">
-              <span className="card-item-label">{p.label}</span>
-              <strong style={{ fontSize: 15 }}>{getDiffText(p)}</strong>
-            </div>
-            <div className="card-item-codes">
-              EAN: {p.ean}{p.parkod ? ` · PARKOD: ${p.parkod}` : ''}
-            </div>
-            <div className="card-item-row">
-              <span className="card-item-field">Demandée</span>
-              <span className="card-item-value">{p.qty_requested}</span>
-            </div>
-            <div className="card-item-row">
-              <span className="card-item-field">Envoyée</span>
-              <span className="card-item-value">{p.qty_sent !== null ? p.qty_sent : '—'}</span>
-            </div>
-            {p.qty_received !== null && (
+        {filteredProducts.map((p) => {
+          const depot = getDepotStatus(p);
+          const tooltip = getTooltip(p);
+          return (
+            <div key={p.id} className={`product-card-item ${getRowClass(p)}`} title={tooltip}>
+              <div className="card-item-header">
+                <span className="card-item-label">{p.label}</span>
+                <strong className={depot.cls} style={{ fontSize: 13 }}>{depot.text}</strong>
+              </div>
+              <div className="card-item-codes">
+                EAN: {p.ean}{p.parkod ? ` · PARKOD: ${p.parkod}` : ''}
+              </div>
               <div className="card-item-row">
-                <span className="card-item-field">Qté reçue</span>
-                <span className="card-item-value">{p.qty_received}</span>
+                <span className="card-item-field">Demandée</span>
+                <span className="card-item-value">{p.qty_requested}</span>
               </div>
-            )}
-            {p.received_at && (
               <div className="card-item-row">
-                <span className="card-item-field">Reçu le</span>
-                <span className="card-item-value" style={{ fontSize: 12 }}>
-                  {new Date(p.received_at).toLocaleString('fr-FR')}
-                </span>
+                <span className="card-item-field">Envoyée</span>
+                <span className="card-item-value">{p.qty_sent !== null ? p.qty_sent : '—'}</span>
               </div>
-            )}
-            {p.qty_sent !== null && p.qty_received === null && (
-              <div className="card-item-actions">
-                <button className="btn btn-secondary btn-small" onClick={() => handleReset(p)} style={{ width: '100%' }}>
-                  Annuler envoi
-                </button>
+              <div className="card-item-row">
+                <span className="card-item-field">Reçue dépôt</span>
+                <span className="card-item-value">{p.qty_received !== null ? p.qty_received : '—'}</span>
               </div>
-            )}
-            {p.qty_received !== null && (
-              <div className="card-item-actions">
-                <button className="btn btn-secondary btn-small" onClick={() => handleResetReceipt(p)} style={{ width: '100%' }}>
-                  Annuler réception
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
+              {tooltip && (
+                <div className="card-item-detail">{tooltip}</div>
+              )}
+              {p.qty_sent !== null && p.qty_received === null && (
+                <div className="card-item-actions">
+                  <button className="btn btn-secondary btn-small" onClick={() => handleReset(p)} style={{ width: '100%' }}>Annuler envoi</button>
+                </div>
+              )}
+              {p.qty_received !== null && (
+                <div className="card-item-actions">
+                  <button className="btn btn-secondary btn-small" onClick={() => handleResetReceipt(p)} style={{ width: '100%' }}>Annuler réception</button>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

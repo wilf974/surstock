@@ -45,6 +45,9 @@ async function getDb() {
   try { db.run('ALTER TABLE products ADD COLUMN qty_received INTEGER DEFAULT NULL'); } catch (e) {}
   try { db.run('ALTER TABLE products ADD COLUMN received_at TEXT DEFAULT NULL'); } catch (e) {}
 
+  // Migration : produits qty_sent=0 sans réception → marquer comme reçus
+  db.run("UPDATE products SET qty_received = 0, received_at = scanned_at WHERE qty_sent = 0 AND qty_received IS NULL");
+
   db.run(`CREATE INDEX IF NOT EXISTS idx_products_ean ON products(ean)`);
 
   // Table settings (clé-valeur pour config SMTP etc.)
