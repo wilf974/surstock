@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { queryAll, queryOne, run } = require('../db');
+const { broadcast } = require('../events');
 
 // GET /api/products - Liste tous les produits
 router.get('/', (req, res) => {
@@ -68,6 +69,7 @@ router.post('/', (req, res) => {
   );
 
   const product = queryOne('SELECT * FROM products WHERE id = ?', [result.lastInsertRowid]);
+  broadcast('products-changed', {});
   res.status(201).json(product);
 });
 
@@ -91,6 +93,7 @@ router.post('/bulk', (req, res) => {
     inserted++;
   }
 
+  broadcast('products-changed', {});
   res.status(201).json({ inserted });
 });
 
@@ -103,12 +106,14 @@ router.delete('/:id', (req, res) => {
     return res.status(404).json({ error: 'Produit non trouvé' });
   }
 
+  broadcast('products-changed', {});
   res.json({ success: true });
 });
 
 // DELETE /api/products - Réinitialiser tous les produits
 router.delete('/', (req, res) => {
   run('DELETE FROM products');
+  broadcast('products-changed', {});
   res.json({ success: true, message: 'Tous les produits ont été supprimés' });
 });
 

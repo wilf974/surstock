@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { api } from '../api';
 import CameraScanner from '../components/CameraScanner';
 import Toast from '../components/Toast';
+import { useLiveUpdates } from '../hooks/useLiveUpdates';
 
 // ──────────────────────────────────────────────
 // Popup "Valider à 0" — rendu via Portal, hors de l'arbre StoreList
@@ -205,6 +206,9 @@ function StoreList() {
   };
 
   useEffect(() => { loadProducts(); }, [filter]);
+
+  // Mise à jour en temps réel quand un autre appareil scanne
+  useLiveUpdates(() => { loadProducts(); });
 
   const showMsg = useCallback((text, type = 'success') => {
     setMessage({ text, type });

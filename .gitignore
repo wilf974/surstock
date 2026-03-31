@@ -2,3 +2,4 @@ node_modules/
 *.db
 frontend/dist/
 .env
+VPS_SSH.md

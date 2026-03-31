@@ -92,4 +92,9 @@ function requireAuth(req, res, next) {
   next();
 }
 
-module.exports = { router, requireAdmin, requireStore, requireDepot, requireAuth };
+// Vérifier si un token est valide (pour SSE)
+function checkToken(token) {
+  return activeTokens.has(token);
+}
+
+module.exports = { router, requireAdmin, requireStore, requireDepot, requireAuth, checkToken };

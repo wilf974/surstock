@@ -64,6 +64,17 @@ app.use('/api/dashboard', requireAdmin, dashboardRoutes);
 app.use('/api/settings', requireAdmin, settingsRoutes);
 app.use('/api/notifications', requireAdmin, notificationsRoutes);
 
+// SSE — mise à jour en temps réel (token en query param car EventSource ne supporte pas les headers)
+const { addClient } = require('./events');
+const { checkToken } = require('./routes/auth');
+app.get('/api/events', (req, res) => {
+  const token = req.query.token;
+  if (!token || !checkToken(token)) {
+    return res.status(401).json({ error: 'Authentification requise' });
+  }
+  addClient(res);
+});
+
 // Fallback vers le frontend pour les routes SPA
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api')) {

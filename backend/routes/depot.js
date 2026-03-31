@@ -3,6 +3,7 @@ const router = express.Router();
 const { queryOne, queryAll, run } = require('../db');
 const { sendDepotNotification } = require('../email');
 const { addNotification } = require('./notifications');
+const { broadcast } = require('../events');
 
 // GET /api/depot/ean/:ean — Chercher un produit confirmé par le magasin (pour scan dépôt)
 router.get('/ean/:ean', (req, res) => {
@@ -77,6 +78,7 @@ router.patch('/:id/scan', async (req, res) => {
     );
   }
 
+  broadcast('product-updated', { id: updated.id });
   res.json(updated);
 });
 
@@ -94,6 +96,7 @@ router.patch('/:id/reset', (req, res) => {
     return res.status(404).json({ error: 'Produit non trouvé' });
   }
 
+  broadcast('product-updated', { id: updated.id });
   res.json(updated);
 });
 

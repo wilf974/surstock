@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
 import { api } from '../api';
 import CameraScanner from '../components/CameraScanner';
 import Toast from '../components/Toast';
+import { useLiveUpdates } from '../hooks/useLiveUpdates';
 
 // ──────────────────────────────────────────────
 // Ligne tableau (desktop)
@@ -115,6 +116,8 @@ function DepotList() {
   };
 
   useEffect(() => { loadProducts(); }, [filter]);
+
+  useLiveUpdates(() => { loadProducts(); });
 
   const showMsg = useCallback((text, type = 'success') => {
     setMessage({ text, type });

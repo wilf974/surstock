@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import * as XLSX from 'xlsx';
+import { useLiveUpdates } from '../hooks/useLiveUpdates';
 
 function AdminDashboard() {
   const [summary, setSummary] = useState(null);
@@ -22,6 +23,8 @@ function AdminDashboard() {
   };
 
   useEffect(() => { loadSummary(); }, []);
+
+  useLiveUpdates(() => { loadSummary(); });
 
   if (loading || !summary) {
     return <div className="page"><p className="loading-text">Chargement...</p></div>;

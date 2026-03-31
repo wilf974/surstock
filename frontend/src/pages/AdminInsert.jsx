@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
 import * as XLSX from 'xlsx';
+import { useLiveUpdates } from '../hooks/useLiveUpdates';
 
 function AdminInsert() {
   const [ean, setEan] = useState('');
@@ -26,6 +27,8 @@ function AdminInsert() {
   useEffect(() => {
     loadProducts();
   }, []);
+
+  useLiveUpdates(() => { loadProducts(); });
 
   const showMsg = (text, type = 'success') => {
     setMessage({ text, type });
