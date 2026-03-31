@@ -11,7 +11,7 @@ const depotRoutes = require('./routes/depot');
 const dashboardRoutes = require('./routes/dashboard');
 const settingsRoutes = require('./routes/settings');
 const { router: notificationsRoutes } = require('./routes/notifications');
-const { router: authRoutes, requireAdmin, requireStore, requireDepot } = require('./routes/auth');
+const { router: authRoutes, requireAdmin, requireStore, requireDepot, requireAuth } = require('./routes/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -51,9 +51,9 @@ app.use(express.static(path.join(__dirname, '../frontend/dist')));
 // Routes API
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', authRoutes);
-// Products : GET protégé store, POST/DELETE protégés admin
+// Products : GET accessible à tous les rôles authentifiés, POST/DELETE admin
 app.use('/api/products', (req, res, next) => {
-  if (req.method === 'GET') return requireStore(req, res, next);
+  if (req.method === 'GET') return requireAuth(req, res, next);
   requireAdmin(req, res, next);
 }, productsRoutes);
 app.use('/api/scan/:id/reset', requireAdmin);

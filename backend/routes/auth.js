@@ -83,4 +83,13 @@ function requireDepot(req, res, next) {
   next();
 }
 
-module.exports = { router, requireAdmin, requireStore, requireDepot };
+// Middleware pour protéger les routes accessibles à tous les rôles authentifiés
+function requireAuth(req, res, next) {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token || !activeTokens.has(token)) {
+    return res.status(401).json({ error: 'Authentification requise' });
+  }
+  next();
+}
+
+module.exports = { router, requireAdmin, requireStore, requireDepot, requireAuth };
