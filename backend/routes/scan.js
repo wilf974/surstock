@@ -19,10 +19,19 @@ router.patch('/:id/confirm', (req, res) => {
     return res.status(404).json({ error: 'Produit non trouvé' });
   }
 
-  run(
-    "UPDATE products SET qty_sent = ?, scanned_at = datetime('now', 'localtime') WHERE id = ?",
-    [parseInt(qty_sent), parseInt(id)]
-  );
+  const qtyVal = parseInt(qty_sent);
+  if (qtyVal === 0) {
+    // Si envoyé 0, auto-valider aussi le dépôt
+    run(
+      "UPDATE products SET qty_sent = 0, scanned_at = datetime('now', 'localtime'), qty_received = 0, received_at = datetime('now', 'localtime') WHERE id = ?",
+      [parseInt(id)]
+    );
+  } else {
+    run(
+      "UPDATE products SET qty_sent = ?, scanned_at = datetime('now', 'localtime') WHERE id = ?",
+      [qtyVal, parseInt(id)]
+    );
+  }
 
   const updated = queryOne('SELECT * FROM products WHERE id = ?', [parseInt(id)]);
 
