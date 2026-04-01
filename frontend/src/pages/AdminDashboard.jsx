@@ -14,7 +14,8 @@ function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(null);
   const [dateFilter, setDateFilter] = useState('');
-  const [exportFilter, setExportFilter] = useState('all'); // all, exported, not_exported
+  const [exportFilter, setExportFilter] = useState('all');
+  const [depotFilter, setDepotFilter] = useState('all');
 
   const loadSummary = async () => {
     setLoading(true);
@@ -58,6 +59,10 @@ function AdminDashboard() {
     }
     if (exportFilter === 'exported' && !p.exported_at) return false;
     if (exportFilter === 'not_exported' && p.exported_at) return false;
+    if (depotFilter === 'received' && (p.qty_received === null || p.qty_received < p.qty_sent)) return false;
+    if (depotFilter === 'partial' && !(p.qty_sent !== null && (p.qty_received === null || p.qty_received < p.qty_sent))) return false;
+    if (depotFilter === 'not_received' && !(p.qty_sent !== null && (p.qty_received === null || p.qty_received === 0))) return false;
+    if (depotFilter === 'discrepancy' && !(p.qty_received !== null && p.qty_received >= p.qty_sent && p.qty_received !== p.qty_sent)) return false;
     return true;
   });
 
@@ -322,8 +327,15 @@ function AdminDashboard() {
           {brands.map(b => <option key={b} value={b}>{b}</option>)}
         </select>
         <input type="date" className="date-input" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} title="Filtrer par date de traitement" />
+        <select className="brand-select" value={depotFilter} onChange={(e) => setDepotFilter(e.target.value)}>
+          <option value="all">Dépôt: tous</option>
+          <option value="received">Réceptionnés</option>
+          <option value="partial">En cours</option>
+          <option value="not_received">Non reçus</option>
+          <option value="discrepancy">Avec écart</option>
+        </select>
         <select className="brand-select" value={exportFilter} onChange={(e) => setExportFilter(e.target.value)}>
-          <option value="all">Tous</option>
+          <option value="all">Traité: tous</option>
           <option value="not_exported">Non traités</option>
           <option value="exported">Traités</option>
         </select>
