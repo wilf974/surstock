@@ -97,6 +97,36 @@ router.post('/bulk', (req, res) => {
   res.status(201).json({ inserted });
 });
 
+// PATCH /api/products/export - Marquer des produits comme traités (exportés)
+router.patch('/export', (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'Liste d\'IDs requise' });
+  }
+  const placeholders = ids.map(() => '?').join(',');
+  run(
+    `UPDATE products SET exported_at = datetime('now', 'localtime') WHERE id IN (${placeholders})`,
+    ids.map(id => parseInt(id))
+  );
+  broadcast('product-updated', {});
+  res.json({ success: true, count: ids.length });
+});
+
+// PATCH /api/products/unexport - Remettre des produits comme non traités
+router.patch('/unexport', (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'Liste d\'IDs requise' });
+  }
+  const placeholders = ids.map(() => '?').join(',');
+  run(
+    `UPDATE products SET exported_at = NULL WHERE id IN (${placeholders})`,
+    ids.map(id => parseInt(id))
+  );
+  broadcast('product-updated', {});
+  res.json({ success: true });
+});
+
 // DELETE /api/products/:id - Supprimer un produit
 router.delete('/:id', (req, res) => {
   const { id } = req.params;

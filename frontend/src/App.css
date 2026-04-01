@@ -904,6 +904,20 @@ tr.row-status-depot-discrepancy { cursor: help; }
 
 .brand-select:focus { border-color: var(--blue); }
 
+.date-input {
+  padding: 10px 14px;
+  border: 2px solid var(--gray-200);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: var(--font);
+  outline: none;
+  min-height: 44px;
+  background: var(--white);
+  transition: var(--transition);
+}
+
+.date-input:focus { border-color: var(--blue); }
+
 /* ============================================
    BADGES
    ============================================ */
@@ -920,6 +934,8 @@ tr.row-status-depot-discrepancy { cursor: help; }
 .badge-pending { background: var(--orange-pale); color: #8a6111; }
 .badge-received { background: #f3e8ff; color: #6b21a8; }
 .badge-danger { background: var(--red-pale); color: #a5281b; }
+.badge-exported { background: #e0f2fe; color: #0369a1; }
+.badge-not-exported { color: var(--gray-400); }
 
 /* ============================================
    SCAN INDICATORS

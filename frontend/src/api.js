@@ -33,6 +33,8 @@ export const api = {
   addProductsBulk: (products) => request('/products/bulk', { method: 'POST', body: JSON.stringify({ products }) }),
   deleteProduct: (id) => request(`/products/${id}`, { method: 'DELETE' }),
   deleteAllProducts: () => request('/products', { method: 'DELETE' }),
+  markExported: (ids) => request('/products/export', { method: 'PATCH', body: JSON.stringify({ ids }) }),
+  markUnexported: (ids) => request('/products/unexport', { method: 'PATCH', body: JSON.stringify({ ids }) }),
 
   // Scan
   confirmScan: (id, qty_sent) => request(`/scan/${id}/confirm`, { method: 'PATCH', body: JSON.stringify({ qty_sent }) }),

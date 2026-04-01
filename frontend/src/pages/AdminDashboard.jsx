@@ -13,6 +13,8 @@ function AdminDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(null);
+  const [dateFilter, setDateFilter] = useState('');
+  const [exportFilter, setExportFilter] = useState('all'); // all, exported, not_exported
 
   const loadSummary = async () => {
     setLoading(true);
@@ -45,10 +47,18 @@ function AdminDashboard() {
       (p.parkod && p.parkod.toLowerCase().includes(search.toLowerCase())) ||
       p.label.toLowerCase().includes(search.toLowerCase());
     if (!matchSearch) return false;
-    if (!brandFilter) return true;
-    const parts = p.label.split(' - ');
-    const name = parts.length >= 2 ? parts[1].trim() : parts[0].trim();
-    return name === brandFilter;
+    if (brandFilter) {
+      const parts = p.label.split(' - ');
+      const name = parts.length >= 2 ? parts[1].trim() : parts[0].trim();
+      if (name !== brandFilter) return false;
+    }
+    if (dateFilter) {
+      const pDate = p.received_at || p.scanned_at;
+      if (!pDate || !pDate.startsWith(dateFilter)) return false;
+    }
+    if (exportFilter === 'exported' && !p.exported_at) return false;
+    if (exportFilter === 'not_exported' && p.exported_at) return false;
+    return true;
   });
 
   const exportSql = () => {
@@ -69,6 +79,30 @@ function AdminDashboard() {
     a.download = 'stkperm_update.md';
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const markFilteredAsExported = async () => {
+    const ids = filteredProducts.filter(p => p.qty_received !== null && !p.exported_at).map(p => p.id);
+    if (ids.length === 0) { setMessage({ text: 'Aucun produit à marquer', type: 'warning' }); setTimeout(() => setMessage(null), 3000); return; }
+    if (!window.confirm(`Marquer ${ids.length} produit(s) comme traité(s) ?`)) return;
+    try {
+      await api.markExported(ids);
+      setMessage({ text: `${ids.length} produit(s) marqué(s) comme traités`, type: 'success' });
+      setTimeout(() => setMessage(null), 3000);
+      loadSummary();
+    } catch { setMessage({ text: 'Erreur', type: 'error' }); setTimeout(() => setMessage(null), 3000); }
+  };
+
+  const unmarkFilteredAsExported = async () => {
+    const ids = filteredProducts.filter(p => p.exported_at).map(p => p.id);
+    if (ids.length === 0) return;
+    if (!window.confirm(`Remettre ${ids.length} produit(s) comme non traité(s) ?`)) return;
+    try {
+      await api.markUnexported(ids);
+      setMessage({ text: `${ids.length} produit(s) remis comme non traités`, type: 'success' });
+      setTimeout(() => setMessage(null), 3000);
+      loadSummary();
+    } catch { setMessage({ text: 'Erreur', type: 'error' }); setTimeout(() => setMessage(null), 3000); }
   };
 
   const generateTransfert = () => {
@@ -281,16 +315,26 @@ function AdminDashboard() {
       )}
 
       <div className="filter-bar">
-        <input type="text" placeholder="Rechercher par EAN, PARKOD ou libellé..."
+        <input type="text" placeholder="Rechercher EAN, PARKOD, libellé..."
           value={search} onChange={(e) => setSearch(e.target.value)} className="search-input" />
         <select className="brand-select" value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)}>
           <option value="">Toutes les marques</option>
           {brands.map(b => <option key={b} value={b}>{b}</option>)}
         </select>
+        <input type="date" className="date-input" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} title="Filtrer par date de traitement" />
+        <select className="brand-select" value={exportFilter} onChange={(e) => setExportFilter(e.target.value)}>
+          <option value="all">Tous</option>
+          <option value="not_exported">Non traités</option>
+          <option value="exported">Traités</option>
+        </select>
         <button className="btn btn-secondary" onClick={loadSummary}>Actualiser</button>
+      </div>
+      <div className="filter-bar">
         <button className="btn btn-success" onClick={exportXlsx}>Export XLSX</button>
         <button className="btn btn-secondary" onClick={exportSql}>STKPERM .md</button>
         <button className="btn btn-secondary" onClick={() => setShowTransfert(true)}>Transfert</button>
+        <button className="btn btn-primary" onClick={markFilteredAsExported}>Marquer traités</button>
+        <button className="btn btn-secondary" onClick={unmarkFilteredAsExported}>Démarquer</button>
       </div>
 
       {/* Légende */}
@@ -312,7 +356,8 @@ function AdminDashboard() {
             <th>Envoyée</th>
             <th>Écart mag.</th>
             <th>Reçue</th>
-            <th>Statut dépôt</th>
+            <th>Dépôt</th>
+            <th>Traité</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -330,6 +375,11 @@ function AdminDashboard() {
                 <td className="qty-cell diff-cell"><strong>{getDiffText(p)}</strong></td>
                 <td className="qty-cell">{p.qty_received !== null ? p.qty_received : '—'}</td>
                 <td className={`qty-cell ${depot.cls}`}><strong>{depot.text}</strong></td>
+                <td className="qty-cell">
+                  {p.exported_at
+                    ? <span className="badge badge-exported">Traité</span>
+                    : <span className="badge badge-not-exported">—</span>}
+                </td>
                 <td>
                   {p.qty_sent !== null && p.qty_received === null && (
                     <button className="btn btn-secondary btn-small" onClick={() => handleReset(p)}>Annuler envoi</button>
@@ -369,6 +419,12 @@ function AdminDashboard() {
               <div className="card-item-row">
                 <span className="card-item-field">Reçue dépôt</span>
                 <span className="card-item-value">{p.qty_received !== null ? p.qty_received : '—'}</span>
+              </div>
+              <div className="card-item-row">
+                <span className="card-item-field">Traité</span>
+                <span className="card-item-value">
+                  {p.exported_at ? <span className="badge badge-exported">Traité</span> : '—'}
+                </span>
               </div>
               {tooltip && (
                 <div className="card-item-detail">{tooltip}</div>
