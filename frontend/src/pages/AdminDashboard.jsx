@@ -7,6 +7,10 @@ function AdminDashboard() {
   const [summary, setSummary] = useState(null);
   const [search, setSearch] = useState('');
   const [brandFilter, setBrandFilter] = useState('');
+  const [showTransfert, setShowTransfert] = useState(false);
+  const [transfertParams, setTransfertParams] = useState({
+    codeDu: '0002', codeAu: '0000', intitule: 'ST.MB', numero: '000393'
+  });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(null);
 
@@ -65,6 +69,40 @@ function AdminDashboard() {
     a.download = 'stkperm_update.md';
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const generateTransfert = () => {
+    const { codeDu, codeAu, intitule, numero } = transfertParams;
+    const du2 = codeDu.slice(-2);
+    const au2 = codeAu.slice(-2);
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2, '0');
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const yy = String(now.getFullYear()).slice(-2);
+    const yyyy = String(now.getFullYear());
+    const dateFile = `${dd}${mm}${yy}`;
+    const dateLine = `${yyyy}${mm}${dd}`;
+
+    const lines = [];
+    for (const p of filteredProducts) {
+      if (!p.parkod || p.qty_sent === null || p.qty_sent === 0) continue;
+      const qty = p.qty_sent;
+      let espace;
+      if (qty < 10) espace = '   ';
+      else if (qty < 100) espace = '  ';
+      else espace = '';
+      lines.push(`TT${du2}${au2}${p.parkod}${espace}${qty}  ;${dateLine};1600;${intitule};;${codeDu};${codeAu}`);
+    }
+
+    const filename = `V${dateFile}01.${numero}`;
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    setShowTransfert(false);
   };
 
   const exportXlsx = () => {
@@ -202,6 +240,45 @@ function AdminDashboard() {
 
       {message && <div className={`alert alert-${message.type}`}>{message.text}</div>}
 
+      {/* Modale paramètres transfert */}
+      {showTransfert && (
+        <div className="scan-modal-overlay" onClick={() => setShowTransfert(false)}>
+          <div className="scan-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="scan-modal-header">Générer fichier de transfert</div>
+            <div className="scan-modal-body">
+              <div className="form-row" style={{ marginBottom: 12 }}>
+                <div className="form-group">
+                  <label>Code Du (source)</label>
+                  <input type="text" value={transfertParams.codeDu}
+                    onChange={(e) => setTransfertParams(p => ({ ...p, codeDu: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label>Code Au (destination)</label>
+                  <input type="text" value={transfertParams.codeAu}
+                    onChange={(e) => setTransfertParams(p => ({ ...p, codeAu: e.target.value }))} />
+                </div>
+              </div>
+              <div className="form-row" style={{ marginBottom: 12 }}>
+                <div className="form-group">
+                  <label>Intitulé</label>
+                  <input type="text" value={transfertParams.intitule}
+                    onChange={(e) => setTransfertParams(p => ({ ...p, intitule: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label>Numéro fichier</label>
+                  <input type="text" value={transfertParams.numero}
+                    onChange={(e) => setTransfertParams(p => ({ ...p, numero: e.target.value }))} />
+                </div>
+              </div>
+              <div className="confirm-buttons">
+                <button className="btn btn-primary btn-large" onClick={generateTransfert}>Générer</button>
+                <button className="btn btn-secondary btn-large" onClick={() => setShowTransfert(false)}>Annuler</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="filter-bar">
         <input type="text" placeholder="Rechercher par EAN, PARKOD ou libellé..."
           value={search} onChange={(e) => setSearch(e.target.value)} className="search-input" />
@@ -212,6 +289,7 @@ function AdminDashboard() {
         <button className="btn btn-secondary" onClick={loadSummary}>Actualiser</button>
         <button className="btn btn-success" onClick={exportXlsx}>Export XLSX</button>
         <button className="btn btn-secondary" onClick={exportSql}>STKPERM .md</button>
+        <button className="btn btn-secondary" onClick={() => setShowTransfert(true)}>Transfert</button>
       </div>
 
       {/* Légende */}
