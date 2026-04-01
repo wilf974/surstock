@@ -9,7 +9,7 @@ function AdminDashboard() {
   const [brandFilter, setBrandFilter] = useState('');
   const [showTransfert, setShowTransfert] = useState(false);
   const [transfertParams, setTransfertParams] = useState({
-    codeDu: '0002', codeAu: '0000', intitule: 'ST.MB', numero: '000393'
+    codeDu: '0002', codeAu: '0000', intitule: 'ST.MB', sequence: '01'
   });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(null);
@@ -72,7 +72,7 @@ function AdminDashboard() {
   };
 
   const generateTransfert = () => {
-    const { codeDu, codeAu, intitule, numero } = transfertParams;
+    const { codeDu, codeAu, intitule, sequence } = transfertParams;
     const du2 = codeDu.slice(-2);
     const au2 = codeAu.slice(-2);
     const now = new Date();
@@ -82,6 +82,7 @@ function AdminDashboard() {
     const yyyy = String(now.getFullYear());
     const dateFile = `${dd}${mm}${yy}`;
     const dateLine = `${yyyy}${mm}${dd}`;
+    const seq = sequence.padStart(2, '0');
 
     const lines = [];
     for (const p of filteredProducts) {
@@ -94,7 +95,7 @@ function AdminDashboard() {
       lines.push(`TT${du2}${au2}${p.parkod}${espace}${qty}  ;${dateLine};1600;${intitule};;${codeDu};${codeAu}`);
     }
 
-    const filename = `V${dateFile}01.${numero}`;
+    const filename = `V${dateFile}${seq}.000393`;
     const blob = new Blob([lines.join('\r\n')], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -265,9 +266,9 @@ function AdminDashboard() {
                     onChange={(e) => setTransfertParams(p => ({ ...p, intitule: e.target.value }))} />
                 </div>
                 <div className="form-group">
-                  <label>Numéro fichier</label>
-                  <input type="text" value={transfertParams.numero}
-                    onChange={(e) => setTransfertParams(p => ({ ...p, numero: e.target.value }))} />
+                  <label>N° séquence (01, 02...)</label>
+                  <input type="text" value={transfertParams.sequence}
+                    onChange={(e) => setTransfertParams(p => ({ ...p, sequence: e.target.value }))} />
                 </div>
               </div>
               <div className="confirm-buttons">
