@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
 import * as XLSX from 'xlsx';
 import { useLiveUpdates } from '../hooks/useLiveUpdates';
@@ -17,6 +17,8 @@ function AdminDashboard() {
   const [exportFilter, setExportFilter] = useState('all');
   const [depotFilter, setDepotFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [refXlsx, setRefXlsx] = useState(null); // Map parkod → stkperm from reference XLSX
+  const refFileRef = useRef(null);
 
   const loadSummary = async () => {
     setLoading(true);
@@ -89,15 +91,47 @@ function AdminDashboard() {
     return true;
   });
 
+  const handleRefXlsx = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
+
+    // Colonne G (index 6) = PARKOD 8 chars, Colonne AN (index 39) = STKPERM
+    const map = new Map();
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || !row[6]) continue;
+      const parkod = String(row[6]).trim();
+      const stkperm = parseInt(row[39]) || 0;
+      map.set(parkod, stkperm);
+    }
+    setRefXlsx(map);
+    setMessage({ text: `Référence chargée : ${map.size} articles`, type: 'success' });
+    setTimeout(() => setMessage(null), 3000);
+    refFileRef.current.value = '';
+  };
+
   const exportSql = () => {
     const lines = ['# Requêtes STKPERM — Surstock', ''];
     for (const p of filteredProducts) {
       if (!p.parkod || p.qty_sent === null) continue;
-      const stkperm = p.qty_requested - p.qty_sent;
-      if (stkperm < 0) continue;
       const cmarq = p.parkod.substring(0, 3);
       const ccateg = p.parkod.substring(3, 5);
       const cprod = p.parkod.substring(5, 8);
+
+      let stkperm;
+      if (refXlsx && refXlsx.has(p.parkod)) {
+        const refValue = refXlsx.get(p.parkod);
+        // Si la ref XLSX a un STKPERM > 0, on prend cette valeur
+        // Sinon on calcule la différence (ce que le magasin a gardé)
+        stkperm = refValue > 0 ? refValue : Math.max(0, p.qty_requested - p.qty_sent);
+      } else {
+        stkperm = Math.max(0, p.qty_requested - p.qty_sent);
+      }
+
       lines.push(`UPDATE ARTMAG SET STKPERM = ${stkperm} WHERE CMAG = '0002' AND CMARQ = '${cmarq}' AND CCATEG = '${ccateg}' AND CPROD = '${cprod}';`);
     }
     const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
@@ -357,6 +391,10 @@ function AdminDashboard() {
       </div>
       <div className="filter-bar">
         <button className="btn btn-success" onClick={exportXlsx}>Export XLSX</button>
+        <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+          {refXlsx ? `Réf. chargée (${refXlsx.size})` : 'Charger réf. XLSX'}
+          <input type="file" accept=".xlsx,.xls" ref={refFileRef} onChange={handleRefXlsx} style={{ display: 'none' }} />
+        </label>
         <button className="btn btn-secondary" onClick={exportSql}>STKPERM .md</button>
         <button className="btn btn-secondary" onClick={() => setShowTransfert(true)}>Transfert</button>
         <button className="btn btn-primary" onClick={markFilteredAsExported}>Marquer traités</button>
