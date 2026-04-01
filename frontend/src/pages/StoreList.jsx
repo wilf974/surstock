@@ -223,7 +223,7 @@ function StoreList() {
   }, [showMsg]);
 
   const processScannedCode = useCallback((code) => {
-    const ean = code.trim();
+    const ean = code.trim().padStart(13, '0');
     if (!ean) return;
     const prods = productsRef.current;
     const found = prods.find(p => (p.ean === ean || p.parkod === ean) && p.qty_sent === null);

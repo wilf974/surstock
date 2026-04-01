@@ -25,7 +25,7 @@ router.get('/', (req, res) => {
 
 // GET /api/products/ean/:ean - Chercher un produit par EAN (pour le scanner)
 router.get('/ean/:ean', (req, res) => {
-  const { ean } = req.params;
+  const ean = req.params.ean.padStart(13, '0');
 
   // Retourner le premier produit non confirmé avec cet EAN
   const product = queryOne(
@@ -65,7 +65,7 @@ router.post('/', (req, res) => {
   const now = qty === 0 ? new Date().toISOString() : null;
   const result = run(
     'INSERT INTO products (ean, parkod, label, qty_requested, qty_sent, scanned_at, qty_received, received_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [ean.trim(), parkod ? parkod.trim() : null, label.trim(), qty, qty === 0 ? 0 : null, now, qty === 0 ? 0 : null, now]
+    [ean.trim().padStart(13, '0'), parkod ? parkod.trim() : null, label.trim(), qty, qty === 0 ? 0 : null, now, qty === 0 ? 0 : null, now]
   );
 
   const product = queryOne('SELECT * FROM products WHERE id = ?', [result.lastInsertRowid]);
@@ -88,7 +88,7 @@ router.post('/bulk', (req, res) => {
     const now = qty === 0 ? new Date().toISOString() : null;
     run(
       'INSERT INTO products (ean, parkod, label, qty_requested, qty_sent, scanned_at, qty_received, received_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [item.ean.trim(), item.parkod ? item.parkod.trim() : null, item.label.trim(), qty, qty === 0 ? 0 : null, now, qty === 0 ? 0 : null, now]
+      [item.ean.trim().padStart(13, '0'), item.parkod ? item.parkod.trim() : null, item.label.trim(), qty, qty === 0 ? 0 : null, now, qty === 0 ? 0 : null, now]
     );
     inserted++;
   }

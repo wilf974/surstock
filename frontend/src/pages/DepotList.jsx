@@ -126,7 +126,7 @@ function DepotList() {
 
   // Scan automatique : cherche le produit, incrémente, pas de modale
   const processScannedCode = useCallback(async (code) => {
-    const ean = code.trim();
+    const ean = code.trim().padStart(13, '0');
     if (!ean || scanningRef.current) return;
 
     setScanning(true);

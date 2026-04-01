@@ -7,7 +7,7 @@ const { broadcast } = require('../events');
 
 // GET /api/depot/ean/:ean — Chercher un produit confirmé par le magasin (pour scan dépôt)
 router.get('/ean/:ean', (req, res) => {
-  const { ean } = req.params;
+  const ean = req.params.ean.padStart(13, '0');
 
   // Chercher un produit envoyé mais pas encore complètement réceptionné
   const product = queryOne(
