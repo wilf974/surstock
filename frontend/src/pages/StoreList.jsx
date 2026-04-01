@@ -237,7 +237,7 @@ function StoreList() {
       return;
     }
     setScannedProduct(found);
-    setQtySent(String(found.qty_requested));
+    setQtySent('');
     setTimeout(() => {
       qtyInputRef.current?.focus();
       qtyInputRef.current?.select();
@@ -419,7 +419,7 @@ function StoreList() {
                     onChange={(e) => setQtySent(e.target.value)} className="qty-input" autoComplete="off" />
                 </label>
                 <div className="confirm-buttons">
-                  <button type="submit" className="btn btn-success btn-large">Confirmer</button>
+                  <button type="submit" className="btn btn-success btn-large" disabled={qtySent === ''}>Confirmer</button>
                   <button type="button" onClick={handleCancelScan} className="btn btn-secondary btn-large">Annuler</button>
                 </div>
               </form>
