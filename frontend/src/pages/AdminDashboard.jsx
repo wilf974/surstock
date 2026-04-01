@@ -16,6 +16,7 @@ function AdminDashboard() {
   const [dateFilter, setDateFilter] = useState('');
   const [exportFilter, setExportFilter] = useState('all');
   const [depotFilter, setDepotFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const loadSummary = async () => {
     setLoading(true);
@@ -42,6 +43,20 @@ function AdminDashboard() {
     return parts.length >= 2 ? parts[1].trim() : parts[0].trim();
   }).filter(Boolean))].sort();
 
+  // Logique couleur de ligne combinant magasin + dépôt
+  const getRowClass = (p) => {
+    if (p.qty_sent === null) return 'row-status-pending';
+    if (p.qty_received !== null && p.qty_received >= p.qty_sent) {
+      if (p.qty_received === p.qty_sent && p.diff === 0) return 'row-status-complete';
+      return 'row-status-depot-discrepancy';
+    }
+    if (p.qty_received === null || p.qty_received < p.qty_sent) {
+      if (p.diff !== 0) return 'row-status-store-discrepancy';
+      return 'row-status-sent';
+    }
+    return '';
+  };
+
   const filteredProducts = summary.products.filter(p => {
     const matchSearch = !search ||
       p.ean.toLowerCase().includes(search.toLowerCase()) ||
@@ -63,6 +78,14 @@ function AdminDashboard() {
     if (depotFilter === 'partial' && !(p.qty_sent !== null && (p.qty_received === null || p.qty_received < p.qty_sent))) return false;
     if (depotFilter === 'not_received' && !(p.qty_sent !== null && (p.qty_received === null || p.qty_received === 0))) return false;
     if (depotFilter === 'discrepancy' && !(p.qty_received !== null && p.qty_received >= p.qty_sent && p.qty_received !== p.qty_sent)) return false;
+    if (statusFilter !== 'all') {
+      const rc = getRowClass(p);
+      if (statusFilter === 'complete' && rc !== 'row-status-complete') return false;
+      if (statusFilter === 'sent' && rc !== 'row-status-sent') return false;
+      if (statusFilter === 'pending' && rc !== 'row-status-pending') return false;
+      if (statusFilter === 'store_disc' && rc !== 'row-status-store-discrepancy') return false;
+      if (statusFilter === 'depot_disc' && rc !== 'row-status-depot-discrepancy') return false;
+    }
     return true;
   });
 
@@ -183,23 +206,6 @@ function AdminDashboard() {
       setMessage({ text: 'Erreur lors de l\'annulation', type: 'error' });
       setTimeout(() => setMessage(null), 3000);
     }
-  };
-
-  // Logique couleur de ligne combinant magasin + dépôt
-  const getRowClass = (p) => {
-    // Pas encore envoyé par le magasin
-    if (p.qty_sent === null) return 'row-status-pending';
-    // Réceptionné par le dépôt avec quantités OK partout
-    if (p.qty_received !== null && p.qty_received >= p.qty_sent) {
-      if (p.qty_received === p.qty_sent && p.diff === 0) return 'row-status-complete';
-      return 'row-status-depot-discrepancy';
-    }
-    // Envoyé mais pas encore réceptionné
-    if (p.qty_received === null || p.qty_received < p.qty_sent) {
-      if (p.diff !== 0) return 'row-status-store-discrepancy';
-      return 'row-status-sent';
-    }
-    return '';
   };
 
   // Tooltip détaillé pour les écarts
@@ -326,7 +332,15 @@ function AdminDashboard() {
           <option value="">Toutes les marques</option>
           {brands.map(b => <option key={b} value={b}>{b}</option>)}
         </select>
-        <input type="date" className="date-input" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} title="Filtrer par date de traitement" />
+        <select className="brand-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="all">Statut: tous</option>
+          <option value="complete">Tout OK</option>
+          <option value="sent">Envoyé (attente dépôt)</option>
+          <option value="pending">En attente</option>
+          <option value="store_disc">Écart magasin</option>
+          <option value="depot_disc">Écart dépôt</option>
+        </select>
+        <input type="date" className="date-input" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} title="Filtrer par date" />
         <select className="brand-select" value={depotFilter} onChange={(e) => setDepotFilter(e.target.value)}>
           <option value="all">Dépôt: tous</option>
           <option value="received">Réceptionnés</option>
