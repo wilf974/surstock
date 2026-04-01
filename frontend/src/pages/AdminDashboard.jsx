@@ -107,7 +107,10 @@ function AdminDashboard() {
       const parkod = String(row[6]).trim();
       const stkperm = parseInt(row[39]) || 0;
       map.set(parkod, stkperm);
+      // Stocker aussi avec padding pour matcher tous les formats
+      if (parkod.length < 8) map.set(parkod.padStart(8, '0'), stkperm);
     }
+    console.log('Ref XLSX loaded, sample:', [...map.entries()].slice(0, 5));
     setRefXlsx(map);
     setMessage({ text: `Référence chargée : ${map.size} articles`, type: 'success' });
     setTimeout(() => setMessage(null), 3000);
@@ -122,12 +125,18 @@ function AdminDashboard() {
       const ccateg = p.parkod.substring(3, 5);
       const cprod = p.parkod.substring(5, 8);
 
+      // Chercher dans le XLSX de référence (match sur 8 premiers chars du PARKOD)
       let stkperm;
-      if (refXlsx && refXlsx.has(p.parkod)) {
-        const refValue = refXlsx.get(p.parkod);
-        // Si la ref XLSX a un STKPERM > 0, on prend cette valeur
-        // Sinon on calcule la différence (ce que le magasin a gardé)
-        stkperm = refValue > 0 ? refValue : Math.max(0, p.qty_requested - p.qty_sent);
+      const parkod8 = p.parkod.substring(0, 8);
+      if (refXlsx) {
+        // Essayer match exact, puis sur 8 chars
+        const refValue = refXlsx.has(p.parkod) ? refXlsx.get(p.parkod)
+          : refXlsx.has(parkod8) ? refXlsx.get(parkod8) : null;
+        if (refValue !== null) {
+          stkperm = refValue > 0 ? refValue : Math.max(0, p.qty_requested - p.qty_sent);
+        } else {
+          stkperm = Math.max(0, p.qty_requested - p.qty_sent);
+        }
       } else {
         stkperm = Math.max(0, p.qty_requested - p.qty_sent);
       }
