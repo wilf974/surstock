@@ -47,6 +47,26 @@ function AdminDashboard() {
     return name === brandFilter;
   });
 
+  const exportSql = () => {
+    const lines = ['# Requêtes STKPERM — Surstock', ''];
+    for (const p of filteredProducts) {
+      if (!p.parkod || p.qty_sent === null) continue;
+      const stkperm = p.qty_requested - p.qty_sent;
+      if (stkperm < 0) continue;
+      const cmarq = p.parkod.substring(0, 3);
+      const ccateg = p.parkod.substring(3, 5);
+      const cprod = p.parkod.substring(5, 8);
+      lines.push(`UPDATE ARTMAG SET STKPERM = ${stkperm} WHERE CMAG = '0002' AND CMARQ = '${cmarq}' AND CCATEG = '${ccateg}' AND CPROD = '${cprod}';`);
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'stkperm_update.md';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const exportXlsx = () => {
     const data = filteredProducts
       .filter(p => p.parkod && p.qty_sent !== null)
@@ -191,6 +211,7 @@ function AdminDashboard() {
         </select>
         <button className="btn btn-secondary" onClick={loadSummary}>Actualiser</button>
         <button className="btn btn-success" onClick={exportXlsx}>Export XLSX</button>
+        <button className="btn btn-secondary" onClick={exportSql}>STKPERM .md</button>
       </div>
 
       {/* Légende */}
