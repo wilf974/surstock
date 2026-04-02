@@ -208,7 +208,12 @@ function StoreList() {
   useEffect(() => { loadProducts(); }, [filter]);
 
   // Mise à jour en temps réel quand un autre appareil scanne
-  useLiveUpdates(() => { loadProducts(); });
+  useLiveUpdates(
+    (product) => {
+      setProducts(prev => prev.map(p => p.id === product.id ? product : p));
+    },
+    () => { loadProducts(); }
+  );
 
   const showMsg = useCallback((text, type = 'success') => {
     setMessage({ text, type });

@@ -34,7 +34,25 @@ function AdminDashboard() {
 
   useEffect(() => { loadSummary(); }, []);
 
-  useLiveUpdates(() => { loadSummary(); });
+  useLiveUpdates(
+    (product) => {
+      setSummary(prev => {
+        if (!prev) return prev;
+        const products = prev.products.map(p => {
+          if (p.id !== product.id) return p;
+          return { ...product, diff: product.qty_sent !== null ? product.qty_sent - product.qty_requested : null };
+        });
+        const confirmed = products.filter(p => p.qty_sent !== null).length;
+        const pending = products.length - confirmed;
+        const withDifference = products.filter(p => p.qty_sent !== null && p.qty_sent !== p.qty_requested).length;
+        const received = products.filter(p => p.qty_received !== null).length;
+        const totalSent = products.filter(p => p.qty_sent !== null).reduce((s, p) => s + p.qty_sent, 0);
+        const totalReceived = products.filter(p => p.qty_received !== null).reduce((s, p) => s + p.qty_received, 0);
+        return { ...prev, products, confirmed, pending, withDifference, received, totalSent, totalReceived };
+      });
+    },
+    () => { loadSummary(); }
+  );
 
   if (loading || !summary) {
     return <div className="page"><p className="loading-text">Chargement...</p></div>;

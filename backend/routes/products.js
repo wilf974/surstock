@@ -69,7 +69,7 @@ router.post('/', (req, res) => {
   );
 
   const product = queryOne('SELECT * FROM products WHERE id = ?', [result.lastInsertRowid]);
-  broadcast('products-changed', {});
+  broadcast('products-changed', { action: 'reload' });
   res.status(201).json(product);
 });
 
@@ -93,7 +93,7 @@ router.post('/bulk', (req, res) => {
     inserted++;
   }
 
-  broadcast('products-changed', {});
+  broadcast('products-changed', { action: 'reload' });
   res.status(201).json({ inserted });
 });
 
@@ -136,14 +136,14 @@ router.delete('/:id', (req, res) => {
     return res.status(404).json({ error: 'Produit non trouvé' });
   }
 
-  broadcast('products-changed', {});
+  broadcast('products-changed', { action: 'reload' });
   res.json({ success: true });
 });
 
 // DELETE /api/products - Réinitialiser tous les produits
 router.delete('/', (req, res) => {
   run('DELETE FROM products');
-  broadcast('products-changed', {});
+  broadcast('products-changed', { action: 'reload' });
   res.json({ success: true, message: 'Tous les produits ont été supprimés' });
 });
 

@@ -28,7 +28,12 @@ function AdminInsert() {
     loadProducts();
   }, []);
 
-  useLiveUpdates(() => { loadProducts(); });
+  useLiveUpdates(
+    (product) => {
+      setProducts(prev => prev.map(p => p.id === product.id ? product : p));
+    },
+    () => { loadProducts(); }
+  );
 
   const showMsg = (text, type = 'success') => {
     setMessage({ text, type });

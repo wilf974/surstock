@@ -78,7 +78,7 @@ router.patch('/:id/scan', async (req, res) => {
     );
   }
 
-  broadcast('product-updated', { id: updated.id });
+  broadcast('product-updated', updated);
   res.json(updated);
 });
 
@@ -96,7 +96,7 @@ router.patch('/:id/reset', (req, res) => {
     return res.status(404).json({ error: 'Produit non trouvé' });
   }
 
-  broadcast('product-updated', { id: updated.id });
+  broadcast('product-updated', updated);
   res.json(updated);
 });
 

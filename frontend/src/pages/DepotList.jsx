@@ -117,7 +117,12 @@ function DepotList() {
 
   useEffect(() => { loadProducts(); }, [filter]);
 
-  useLiveUpdates(() => { loadProducts(); });
+  useLiveUpdates(
+    (product) => {
+      setProducts(prev => prev.map(p => p.id === product.id ? product : p));
+    },
+    () => { loadProducts(); }
+  );
 
   const showMsg = useCallback((text, type = 'success') => {
     setMessage({ text, type });

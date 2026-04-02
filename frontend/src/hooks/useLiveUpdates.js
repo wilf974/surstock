@@ -1,8 +1,12 @@
 import { useEffect, useRef } from 'react';
 
-export function useLiveUpdates(onUpdate) {
-  const callbackRef = useRef(onUpdate);
-  callbackRef.current = onUpdate;
+// onProductUpdate(product) — met à jour un seul produit dans le state
+// onReload() — recharge tout (ajout/suppression en masse)
+export function useLiveUpdates(onProductUpdate, onReload) {
+  const updateRef = useRef(onProductUpdate);
+  const reloadRef = useRef(onReload);
+  updateRef.current = onProductUpdate;
+  reloadRef.current = onReload;
 
   useEffect(() => {
     const token = sessionStorage.getItem('auth_token');
@@ -14,17 +18,24 @@ export function useLiveUpdates(onUpdate) {
     function connect() {
       es = new EventSource(`/api/events?token=${token}`);
 
-      es.addEventListener('product-updated', () => {
-        callbackRef.current();
+      es.addEventListener('product-updated', (e) => {
+        try {
+          const product = JSON.parse(e.data);
+          if (product && product.id) {
+            updateRef.current(product);
+          }
+        } catch {
+          // Fallback: reload si le parsing échoue
+          reloadRef.current?.();
+        }
       });
 
       es.addEventListener('products-changed', () => {
-        callbackRef.current();
+        reloadRef.current?.();
       });
 
       es.onerror = () => {
         es.close();
-        // Reconnexion après 5s
         retryTimeout = setTimeout(connect, 5000);
       };
     }
