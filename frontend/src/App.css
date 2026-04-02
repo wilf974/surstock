@@ -825,6 +825,20 @@ tr.row-status-depot-discrepancy { cursor: help; }
   border-top: 3px solid var(--blue);
 }
 
+.summary-card.clickable {
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.summary-card.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.summary-card.clickable:active {
+  transform: translateY(0);
+}
+
 .summary-card.card-success { border-top-color: var(--green); }
 .summary-card.card-warning { border-top-color: var(--orange); }
 .summary-card.card-danger { border-top-color: var(--red); }

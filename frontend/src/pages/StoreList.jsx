@@ -433,15 +433,15 @@ function StoreList() {
 
       {/* Résumé */}
       <div className="summary-cards">
-        <div className="summary-card">
+        <div className="summary-card clickable" onClick={() => setFilter('all')}>
           <div className="summary-number">{products.length}</div>
           <div className="summary-label">Total</div>
         </div>
-        <div className="summary-card card-success">
+        <div className="summary-card card-success clickable" onClick={() => setFilter('confirmed')}>
           <div className="summary-number">{confirmed}</div>
           <div className="summary-label">Confirmés</div>
         </div>
-        <div className="summary-card card-warning">
+        <div className="summary-card card-warning clickable" onClick={() => setFilter('pending')}>
           <div className="summary-number">{pending}</div>
           <div className="summary-label">En attente</div>
         </div>

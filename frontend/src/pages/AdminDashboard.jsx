@@ -290,28 +290,28 @@ function AdminDashboard() {
       <h1 className="page-title">Tableau de bord</h1>
 
       <div className="summary-cards">
-        <div className="summary-card">
+        <div className="summary-card clickable" onClick={() => { setStatusFilter('all'); setDepotFilter('all'); }}>
           <div className="summary-number">{summary.total}</div>
           <div className="summary-label">Total produits</div>
         </div>
-        <div className="summary-card card-success">
+        <div className="summary-card card-success clickable" onClick={() => { setStatusFilter('sent'); setDepotFilter('all'); }}>
           <div className="summary-number">{summary.confirmed}</div>
           <div className="summary-label">Envoyés</div>
         </div>
-        <div className="summary-card card-warning">
+        <div className="summary-card card-warning clickable" onClick={() => { setStatusFilter('pending'); setDepotFilter('all'); }}>
           <div className="summary-number">{summary.pending}</div>
           <div className="summary-label">En attente</div>
         </div>
-        <div className="summary-card card-danger">
+        <div className="summary-card card-danger clickable" onClick={() => { setStatusFilter('store_disc'); setDepotFilter('all'); }}>
           <div className="summary-number">{summary.withDifference}</div>
           <div className="summary-label">Écart magasin</div>
         </div>
-        <div className="summary-card card-info">
+        <div className="summary-card card-info clickable" onClick={() => { setStatusFilter('all'); setDepotFilter('received'); }}>
           <div className="summary-number">{summary.received || 0}</div>
           <div className="summary-label">Réceptionnés</div>
         </div>
         {depotDiscrepancy > 0 && (
-          <div className="summary-card card-danger">
+          <div className="summary-card card-danger clickable" onClick={() => { setStatusFilter('depot_disc'); setDepotFilter('all'); }}>
             <div className="summary-number">{depotDiscrepancy}</div>
             <div className="summary-label">Écart dépôt</div>
           </div>

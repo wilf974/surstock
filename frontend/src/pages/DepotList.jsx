@@ -260,20 +260,20 @@ function DepotList() {
 
       {/* Résumé */}
       <div className="summary-cards">
-        <div className="summary-card">
+        <div className="summary-card clickable" onClick={() => setFilter('all')}>
           <div className="summary-number">{totalCount}</div>
           <div className="summary-label">Total</div>
         </div>
-        <div className="summary-card card-success">
+        <div className="summary-card card-success clickable" onClick={() => setFilter('complete')}>
           <div className="summary-number">{completeCount}</div>
           <div className="summary-label">Complets</div>
         </div>
-        <div className="summary-card card-warning">
+        <div className="summary-card card-warning clickable" onClick={() => setFilter('awaiting')}>
           <div className="summary-number">{awaitingCount}</div>
           <div className="summary-label">En cours</div>
         </div>
         {discrepancyCount > 0 && (
-          <div className="summary-card card-danger">
+          <div className="summary-card card-danger clickable" onClick={() => setFilter('all')}>
             <div className="summary-number">{discrepancyCount}</div>
             <div className="summary-label">Avec écart</div>
           </div>
