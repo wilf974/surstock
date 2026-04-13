@@ -75,6 +75,7 @@ function DepotList() {
   const [message, setMessage] = useState(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [alert, setAlert] = useState(null);
   const [scanning, setScanning] = useState(false);
   const [manualEan, setManualEan] = useState('');
   const [brandFilter, setBrandFilter] = useState('');
@@ -157,9 +158,11 @@ function DepotList() {
       if (err.status === 409) {
         showMsg(err.error || 'Produit déjà réceptionné', 'warning');
       } else if (err.status === 400) {
-        showMsg(err.error || 'Produit pas encore envoyé', 'error');
+        setAlert(err.error || 'Produit pas encore envoyé par le magasin');
+        setTimeout(() => setAlert(null), 3000);
       } else {
-        showMsg(err.error || `Produit non trouvé pour "${ean}"`, 'error');
+        setAlert(err.error || `Produit non trouvé pour "${ean}" — ne fait pas partie de la liste`);
+        setTimeout(() => setAlert(null), 3000);
       }
     } finally {
       setScanning(false);
@@ -229,6 +232,16 @@ function DepotList() {
       <h1 className="page-title">Réception dépôt</h1>
 
       <Toast message={message} onClose={() => setMessage(null)} />
+
+      {/* Alerte plein écran produit non trouvé */}
+      {alert && (
+        <div className="fullscreen-alert" onClick={() => setAlert(null)}>
+          <div className="fullscreen-alert-content">
+            <div className="fullscreen-alert-icon">!</div>
+            <div className="fullscreen-alert-text">{alert}</div>
+          </div>
+        </div>
+      )}
 
       {scanBuffer && (
         <div className="scan-indicator">Scan en cours : <strong>{scanBuffer}</strong></div>

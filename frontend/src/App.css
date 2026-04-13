@@ -447,6 +447,54 @@ body {
 .toast-warning { background: var(--orange); color: var(--white); }
 .toast-info { background: var(--blue); color: var(--white); }
 
+/* ============================================
+   ALERTE PLEIN ECRAN (dépôt)
+   ============================================ */
+.fullscreen-alert {
+  position: fixed;
+  inset: 0;
+  background: rgba(217, 48, 37, 0.95);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  animation: alertFlash 0.3s ease;
+}
+
+@keyframes alertFlash {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.fullscreen-alert-content {
+  text-align: center;
+  padding: 40px;
+  max-width: 500px;
+}
+
+.fullscreen-alert-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 4px solid var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--white);
+  margin: 0 auto 24px;
+  font-family: var(--mono);
+}
+
+.fullscreen-alert-text {
+  color: var(--white);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 @media (max-width: 768px) {
   .toast {
     bottom: 90px;
