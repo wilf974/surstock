@@ -284,8 +284,14 @@ function StoreList() {
   const handleConfirm = async (e) => {
     e.preventDefault();
     if (!scannedProduct || qtySent === '') return;
+    const qty = parseInt(qtySent);
+    if (isNaN(qty) || qty < 0 || qty > 9999) {
+      showMsg('Quantité invalide (0-9999)', 'error');
+      setQtySent('');
+      return;
+    }
     try {
-      await api.confirmScan(scannedProduct.id, parseInt(qtySent));
+      await api.confirmScan(scannedProduct.id, qty);
       const diff = parseInt(qtySent) - scannedProduct.qty_requested;
       const diffText = diff === 0 ? '(quantité exacte)' :
         diff < 0 ? `(${Math.abs(diff)} de moins)` : `(${diff} de plus)`;
@@ -420,11 +426,23 @@ function StoreList() {
               <form onSubmit={handleConfirm} className="confirm-form">
                 <label className="confirm-label">
                   Quantité envoyée
-                  <input ref={qtyInputRef} type="number" min="0" value={qtySent}
-                    onChange={(e) => setQtySent(e.target.value)} className="qty-input" autoComplete="off" />
+                  <input ref={qtyInputRef} type="number" min="0" max="9999" value={qtySent}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
+                      setQtySent(v);
+                    }}
+                    onKeyDown={(e) => {
+                      // Bloquer Enter si ça ressemble à un scan douchette (>4 chars accumulés)
+                      if (e.key === 'Enter' && qtySent.length > 4) {
+                        e.preventDefault();
+                        setQtySent('');
+                        return;
+                      }
+                    }}
+                    className="qty-input" autoComplete="off" inputMode="numeric" />
                 </label>
                 <div className="confirm-buttons">
-                  <button type="submit" className="btn btn-success btn-large" disabled={qtySent === ''}>Confirmer</button>
+                  <button type="submit" className="btn btn-success btn-large" disabled={qtySent === '' || parseInt(qtySent) > 9999 || isNaN(parseInt(qtySent))}>Confirmer</button>
                   <button type="button" onClick={handleCancelScan} className="btn btn-secondary btn-large">Annuler</button>
                 </div>
               </form>
