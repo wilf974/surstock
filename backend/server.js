@@ -25,7 +25,9 @@ app.use(helmet({
 // CORS : uniquement le domaine autorisé
 const allowedOrigins = [
   'https://sur-stock.myorigines.tech',
-  'http://localhost:5173'
+  'http://localhost:5173',
+  'http://localhost:3001',
+  'http://localhost:3002'
 ];
 app.use(cors({
   origin: function (origin, callback) {
@@ -64,7 +66,10 @@ app.use('/api/depot', requireDepot, depotRoutes);
 app.use('/api/dashboard', requireAdmin, dashboardRoutes);
 app.use('/api/settings', requireAdmin, settingsRoutes);
 app.use('/api/notifications', requireAdmin, notificationsRoutes);
-app.use('/api/magasins', requireAdmin, magasinsRoutes);
+app.use('/api/magasins', (req, res, next) => {
+  if (req.method === 'GET') return requireAuth(req, res, next);
+  requireAdmin(req, res, next);
+}, magasinsRoutes);
 
 // SSE — mise à jour en temps réel (token en query param car EventSource ne supporte pas les headers)
 const { addClient } = require('./events');

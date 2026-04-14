@@ -15,10 +15,9 @@ router.post('/login', (req, res) => {
   const { password, role } = req.body;
 
   if (role === 'store') {
-    // Login magasin : chercher le magasin dont le hash correspond
-    const hash = crypto.createHash('sha256').update(password).digest('hex');
+    // Login magasin : le frontend envoie déjà le hash SHA-256, comparer directement
     const magasins = queryAll('SELECT id, name, code, store_password_hash FROM magasins');
-    const found = magasins.find(m => m.store_password_hash === hash);
+    const found = magasins.find(m => m.store_password_hash === password);
 
     if (!found) {
       return res.status(401).json({ error: 'Mot de passe incorrect' });

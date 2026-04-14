@@ -444,8 +444,8 @@ function AdminDashboard() {
           {refXlsx ? `Réf. chargée (${refXlsx.size})` : 'Charger réf. XLSX'}
           <input type="file" accept=".xlsx,.xls" ref={refFileRef} onChange={handleRefXlsx} style={{ display: 'none' }} />
         </label>
-        <button className="btn btn-secondary" onClick={exportSql}>STKPERM .md</button>
-        <button className="btn btn-secondary" onClick={() => { setTransfertParams(getDefaultTransfertParams()); setShowTransfert(true); }}>Transfert</button>
+        <button className="btn btn-secondary" disabled={!selectedMagasin} onClick={() => { if (!selectedMagasin) return; exportSql(); }} title={!selectedMagasin ? 'Sélectionnez un magasin' : ''}>STKPERM .md</button>
+        <button className="btn btn-secondary" disabled={!selectedMagasin} onClick={() => { if (!selectedMagasin) return; setTransfertParams(getDefaultTransfertParams()); setShowTransfert(true); }} title={!selectedMagasin ? 'Sélectionnez un magasin' : ''}>Transfert</button>
         <button className="btn btn-primary" onClick={markFilteredAsExported}>Marquer traités</button>
         <button className="btn btn-secondary" onClick={unmarkFilteredAsExported}>Démarquer</button>
       </div>

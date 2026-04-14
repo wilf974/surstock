@@ -2,18 +2,23 @@ import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import NotificationBell from './NotificationBell';
 
-function Navbar({ isAdmin, isStore, isDepot, onLogout }) {
+function Navbar({ isAdmin, isStore, isDepot, authRole, magasinName, onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const closeMenu = () => setMenuOpen(false);
+
+  const subtitle = authRole === 'store' && magasinName ? magasinName
+    : authRole === 'depot' ? 'Dépôt'
+    : authRole === 'admin' ? 'Administration'
+    : '';
 
   return (
     <nav className="navbar">
       <div className="navbar-inner">
         <div className="navbar-brand">
           <span className="navbar-logo">SURSTOCK</span>
-          <span className="navbar-divider">/</span>
-          <span className="navbar-subtitle">Maison Blanche</span>
+          {subtitle && <span className="navbar-divider">/</span>}
+          {subtitle && <span className="navbar-subtitle">{subtitle}</span>}
         </div>
 
         <button

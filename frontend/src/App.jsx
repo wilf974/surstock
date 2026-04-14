@@ -13,6 +13,7 @@ import { api } from './api';
 function App() {
   const [authRole, setAuthRole] = useState(null);
   const [magasinId, setMagasinId] = useState(null);
+  const [magasinName, setMagasinName] = useState(null);
   const [checking, setChecking] = useState(true);
 
   const checkAuth = async () => {
@@ -26,6 +27,7 @@ function App() {
       const { role, magasinId: mId } = await api.checkAuth();
       setAuthRole(role);
       setMagasinId(mId || null);
+      setMagasinName(sessionStorage.getItem('auth_magasin_name') || null);
     } catch {
       sessionStorage.removeItem('auth_token');
       sessionStorage.removeItem('auth_role');
@@ -37,7 +39,12 @@ function App() {
 
   useEffect(() => { checkAuth(); }, []);
 
-  const handleLogin = (role, mId) => { setAuthRole(role); setMagasinId(mId || null); };
+  const handleLogin = (role, mId, mName) => {
+    setAuthRole(role);
+    setMagasinId(mId || null);
+    setMagasinName(mName || null);
+    if (mName) sessionStorage.setItem('auth_magasin_name', mName);
+  };
 
   const handleLogout = async () => {
     try { await api.logout(); } catch {}
@@ -45,6 +52,8 @@ function App() {
     sessionStorage.removeItem('auth_role');
     setAuthRole(null);
     setMagasinId(null);
+    setMagasinName(null);
+    sessionStorage.removeItem('auth_magasin_name');
   };
 
   const isAdmin = authRole === 'admin';
@@ -53,7 +62,7 @@ function App() {
 
   return (
     <div className="app">
-      <Navbar isAdmin={isAdmin} isStore={isStore} isDepot={isDepot} onLogout={handleLogout} />
+      <Navbar isAdmin={isAdmin} isStore={isStore} isDepot={isDepot} authRole={authRole} magasinName={magasinName} onLogout={handleLogout} />
       <main className="main-content">
         {checking ? (
           <p className="loading-text">Chargement...</p>
