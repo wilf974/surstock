@@ -2,42 +2,77 @@ const express = require('express');
 const router = express.Router();
 const { queryAll, queryOne, run } = require('../db');
 const { broadcast } = require('../events');
+const { getMagasinId, getRole } = require('./auth');
 
 // GET /api/products - Liste tous les produits
 router.get('/', (req, res) => {
   const { status } = req.query;
+  const role = getRole(req);
+  const tokenMagasinId = getMagasinId(req);
+
+  const conditions = [];
+  const params = [];
+
+  // Filtrage par magasin
+  if (role === 'store') {
+    // Un magasin ne voit que ses propres produits
+    conditions.push('magasin_id = ?');
+    params.push(tokenMagasinId);
+  } else if (req.query.magasin_id) {
+    // Admin/dépôt : filtre optionnel
+    conditions.push('magasin_id = ?');
+    params.push(parseInt(req.query.magasin_id));
+  }
+
+  // Filtrage par statut
+  if (status === 'pending') {
+    conditions.push('qty_sent IS NULL');
+  } else if (status === 'confirmed') {
+    conditions.push('qty_sent IS NOT NULL');
+  } else if (status === 'awaiting_receipt') {
+    conditions.push('qty_sent IS NOT NULL AND qty_received IS NULL');
+  } else if (status === 'received') {
+    conditions.push('qty_received IS NOT NULL');
+  }
 
   let query = 'SELECT * FROM products';
-  if (status === 'pending') {
-    query += ' WHERE qty_sent IS NULL';
-  } else if (status === 'confirmed') {
-    query += ' WHERE qty_sent IS NOT NULL';
-  } else if (status === 'awaiting_receipt') {
-    query += ' WHERE qty_sent IS NOT NULL AND qty_received IS NULL';
-  } else if (status === 'received') {
-    query += ' WHERE qty_received IS NOT NULL';
+  if (conditions.length > 0) {
+    query += ' WHERE ' + conditions.join(' AND ');
   }
   query += ' ORDER BY created_at DESC';
 
-  const products = queryAll(query);
+  const products = queryAll(query, params);
   res.json(products);
 });
 
 // GET /api/products/ean/:ean - Chercher un produit par EAN (pour le scanner)
 router.get('/ean/:ean', (req, res) => {
   const ean = req.params.ean.padStart(13, '0');
+  const role = getRole(req);
+  const tokenMagasinId = getMagasinId(req);
+
+  // Déterminer le filtre magasin
+  let magFilter = '';
+  const magParams = [];
+  if (role === 'store') {
+    magFilter = ' AND magasin_id = ?';
+    magParams.push(tokenMagasinId);
+  } else if (req.query.magasin_id) {
+    magFilter = ' AND magasin_id = ?';
+    magParams.push(parseInt(req.query.magasin_id));
+  }
 
   // Retourner le premier produit non confirmé avec cet EAN
   const product = queryOne(
-    'SELECT * FROM products WHERE ean = ? AND qty_sent IS NULL ORDER BY id ASC LIMIT 1',
-    [ean]
+    'SELECT * FROM products WHERE ean = ? AND qty_sent IS NULL' + magFilter + ' ORDER BY id ASC LIMIT 1',
+    [ean, ...magParams]
   );
 
   if (!product) {
     // Vérifier si le produit existe mais est déjà confirmé
     const confirmed = queryOne(
-      'SELECT * FROM products WHERE ean = ? AND qty_sent IS NOT NULL ORDER BY scanned_at DESC LIMIT 1',
-      [ean]
+      'SELECT * FROM products WHERE ean = ? AND qty_sent IS NOT NULL' + magFilter + ' ORDER BY scanned_at DESC LIMIT 1',
+      [ean, ...magParams]
     );
 
     if (confirmed) {
@@ -56,6 +91,7 @@ router.get('/ean/:ean', (req, res) => {
 // POST /api/products - Ajouter un produit
 router.post('/', (req, res) => {
   const { ean, parkod, label, qty_requested } = req.body;
+  const magasinId = req.body.magasin_id || 1;
 
   if (!ean || !label || qty_requested === undefined) {
     return res.status(400).json({ error: 'EAN, libellé et quantité sont requis' });
@@ -64,8 +100,8 @@ router.post('/', (req, res) => {
   const qty = parseInt(qty_requested);
   const now = qty === 0 ? new Date().toISOString() : null;
   const result = run(
-    'INSERT INTO products (ean, parkod, label, qty_requested, qty_sent, scanned_at, qty_received, received_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [ean.trim().padStart(13, '0'), parkod ? parkod.trim() : null, label.trim(), qty, qty === 0 ? 0 : null, now, qty === 0 ? 0 : null, now]
+    'INSERT INTO products (ean, parkod, label, qty_requested, qty_sent, scanned_at, qty_received, received_at, magasin_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [ean.trim().padStart(13, '0'), parkod ? parkod.trim() : null, label.trim(), qty, qty === 0 ? 0 : null, now, qty === 0 ? 0 : null, now, magasinId]
   );
 
   const product = queryOne('SELECT * FROM products WHERE id = ?', [result.lastInsertRowid]);
@@ -76,6 +112,7 @@ router.post('/', (req, res) => {
 // POST /api/products/bulk - Ajouter plusieurs produits
 router.post('/bulk', (req, res) => {
   const { products } = req.body;
+  const magasinId = req.body.magasin_id || 1;
 
   if (!Array.isArray(products) || products.length === 0) {
     return res.status(400).json({ error: 'Un tableau de produits est requis' });
@@ -87,8 +124,8 @@ router.post('/bulk', (req, res) => {
     const qty = parseInt(item.qty_requested);
     const now = qty === 0 ? new Date().toISOString() : null;
     run(
-      'INSERT INTO products (ean, parkod, label, qty_requested, qty_sent, scanned_at, qty_received, received_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [item.ean.trim().padStart(13, '0'), item.parkod ? item.parkod.trim() : null, item.label.trim(), qty, qty === 0 ? 0 : null, now, qty === 0 ? 0 : null, now]
+      'INSERT INTO products (ean, parkod, label, qty_requested, qty_sent, scanned_at, qty_received, received_at, magasin_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [item.ean.trim().padStart(13, '0'), item.parkod ? item.parkod.trim() : null, item.label.trim(), qty, qty === 0 ? 0 : null, now, qty === 0 ? 0 : null, now, magasinId]
     );
     inserted++;
   }
