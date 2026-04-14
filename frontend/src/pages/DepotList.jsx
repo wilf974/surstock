@@ -68,6 +68,8 @@ const DepotCard = memo(function DepotCard({ p }) {
 const PAGE_SIZE = 100;
 
 function DepotList() {
+  const [magasins, setMagasins] = useState([]);
+  const [selectedMagasin, setSelectedMagasin] = useState(null);
   const [products, setProducts] = useState([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -89,6 +91,22 @@ function DepotList() {
   useEffect(() => { productsRef.current = products; }, [products]);
   useEffect(() => { scanningRef.current = scanning; }, [scanning]);
 
+  // Load magasins with counts
+  useEffect(() => {
+    async function loadMagasins() {
+      try {
+        const mags = await api.getMagasins();
+        const withCounts = await Promise.all(mags.map(async (m) => {
+          const confirmed = await api.getProducts('confirmed', m.id);
+          const received = await api.getProducts('received', m.id);
+          return { ...m, totalCount: confirmed.length, receivedCount: received.length, awaitingCount: confirmed.length - received.length };
+        }));
+        setMagasins(withCounts);
+      } catch (err) { console.error(err); }
+    }
+    loadMagasins();
+  }, []);
+
   useEffect(() => {
     if (!sentinelRef.current) return;
     const observer = new IntersectionObserver((entries) => {
@@ -101,13 +119,15 @@ function DepotList() {
   useEffect(() => { setVisibleCount(PAGE_SIZE); }, [filter]);
 
   const loadProducts = async () => {
+    if (!selectedMagasin) return;
     setLoading(true);
     try {
+      const magId = selectedMagasin.id;
       const data = filter === 'all'
-        ? await api.getProducts('confirmed')
+        ? await api.getProducts('confirmed', magId)
         : filter === 'complete'
-          ? await api.getProducts('received')
-          : await api.getProducts('awaiting_receipt');
+          ? await api.getProducts('received', magId)
+          : await api.getProducts('awaiting_receipt', magId);
       setProducts(data);
     } catch (err) {
       console.error('Erreur chargement produits:', err);
@@ -116,13 +136,14 @@ function DepotList() {
     }
   };
 
-  useEffect(() => { loadProducts(); }, [filter]);
+  useEffect(() => { if (selectedMagasin) loadProducts(); }, [filter, selectedMagasin]);
 
   useLiveUpdates(
     (product) => {
       setProducts(prev => prev.map(p => p.id === product.id ? product : p));
     },
-    () => { loadProducts(); }
+    () => { loadProducts(); },
+    selectedMagasin ? selectedMagasin.id : undefined
   );
 
   const showMsg = useCallback((text, type = 'success') => {
@@ -139,7 +160,7 @@ function DepotList() {
 
     try {
       // Chercher via l'API (gère la logique de priorité)
-      const product = await api.getDepotProductByEan(ean);
+      const product = await api.getDepotProductByEan(ean, selectedMagasin ? selectedMagasin.id : undefined);
 
       // Scanner (incrémenter qty_received de 1)
       const updated = await api.scanDepot(product.id);
@@ -227,9 +248,27 @@ function DepotList() {
   const visibleProducts = useMemo(() => filteredByBrand.slice(0, visibleCount), [filteredByBrand, visibleCount]);
   const hasMore = visibleCount < filteredByBrand.length;
 
+  if (!selectedMagasin) {
+    return (
+      <div className="page">
+        <h1 className="page-title">Réception dépôt</h1>
+        <p style={{ marginBottom: 16, color: 'var(--gray-600)' }}>Sélectionnez un magasin :</p>
+        <div className="summary-cards">
+          {magasins.map(m => (
+            <div key={m.id} className="summary-card clickable" onClick={() => setSelectedMagasin(m)} style={{ minWidth: 200 }}>
+              <div className="summary-number" style={{ fontSize: 20 }}>{m.name}</div>
+              <div className="summary-label">{m.awaitingCount} en attente · {m.receivedCount} complets</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page store-list">
-      <h1 className="page-title">Réception dépôt</h1>
+      <h1 className="page-title">Réception dépôt — {selectedMagasin.name}</h1>
+      <button className="btn btn-secondary" onClick={() => setSelectedMagasin(null)} style={{ marginBottom: 16 }}>← Changer de magasin</button>
 
       <Toast message={message} onClose={() => setMessage(null)} />
 

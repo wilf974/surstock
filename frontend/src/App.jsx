@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import AdminInsert from './pages/AdminInsert';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminSettings from './pages/AdminSettings';
+import AdminMagasins from './pages/AdminMagasins';
 import AdminLogin from './pages/AdminLogin';
 import StoreList from './pages/StoreList';
 import DepotList from './pages/DepotList';
@@ -11,6 +12,7 @@ import { api } from './api';
 
 function App() {
   const [authRole, setAuthRole] = useState(null);
+  const [magasinId, setMagasinId] = useState(null);
   const [checking, setChecking] = useState(true);
 
   const checkAuth = async () => {
@@ -21,8 +23,9 @@ function App() {
       return;
     }
     try {
-      const { role } = await api.checkAuth();
+      const { role, magasinId: mId } = await api.checkAuth();
       setAuthRole(role);
+      setMagasinId(mId || null);
     } catch {
       sessionStorage.removeItem('auth_token');
       sessionStorage.removeItem('auth_role');
@@ -34,13 +37,14 @@ function App() {
 
   useEffect(() => { checkAuth(); }, []);
 
-  const handleLogin = (role) => setAuthRole(role);
+  const handleLogin = (role, mId) => { setAuthRole(role); setMagasinId(mId || null); };
 
   const handleLogout = async () => {
     try { await api.logout(); } catch {}
     sessionStorage.removeItem('auth_token');
     sessionStorage.removeItem('auth_role');
     setAuthRole(null);
+    setMagasinId(null);
   };
 
   const isAdmin = authRole === 'admin';
@@ -65,8 +69,11 @@ function App() {
             <Route path="/admin/reglages" element={
               isAdmin ? <AdminSettings /> : <AdminLogin onLogin={handleLogin} role="admin" />
             } />
+            <Route path="/admin/magasins" element={
+              isAdmin ? <AdminMagasins /> : <AdminLogin onLogin={handleLogin} role="admin" />
+            } />
             <Route path="/magasin/liste" element={
-              isStore ? <StoreList /> : <AdminLogin onLogin={handleLogin} role="store" />
+              isStore ? <StoreList magasinId={magasinId} /> : <AdminLogin onLogin={handleLogin} role="store" />
             } />
             <Route path="/magasin/scanner" element={<Navigate to="/magasin/liste" replace />} />
             <Route path="/depot/liste" element={

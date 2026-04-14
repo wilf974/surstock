@@ -154,7 +154,7 @@ const ProductCard = memo(function ProductCard({ p, onZero }) {
 // ──────────────────────────────────────────────
 const PAGE_SIZE = 100;
 
-function StoreList() {
+function StoreList({ magasinId }) {
   const [products, setProducts] = useState([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -196,7 +196,7 @@ function StoreList() {
     setLoading(true);
     try {
       const status = filter === 'all' ? undefined : filter;
-      const data = await api.getProducts(status);
+      const data = await api.getProducts(status, magasinId);
       setProducts(data);
     } catch (err) {
       console.error('Erreur chargement produits:', err);
@@ -212,7 +212,8 @@ function StoreList() {
     (product) => {
       setProducts(prev => prev.map(p => p.id === product.id ? product : p));
     },
-    () => { loadProducts(); }
+    () => { loadProducts(); },
+    magasinId
   );
 
   const showMsg = useCallback((text, type = 'success') => {

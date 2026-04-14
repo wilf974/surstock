@@ -8,6 +8,12 @@ function AdminDashboard() {
   const [search, setSearch] = useState('');
   const [brandFilter, setBrandFilter] = useState('');
   const [showTransfert, setShowTransfert] = useState(false);
+  const getDefaultTransfertParams = () => {
+    const currentMag = magasins.find(m => String(m.id) === selectedMagasin);
+    return {
+      codeDu: currentMag ? currentMag.code : '0002', codeAu: '0000', intitule: 'ST.MB', sequence: '01'
+    };
+  };
   const [transfertParams, setTransfertParams] = useState({
     codeDu: '0002', codeAu: '0000', intitule: 'ST.MB', sequence: '01'
   });
@@ -18,12 +24,14 @@ function AdminDashboard() {
   const [depotFilter, setDepotFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [refXlsx, setRefXlsx] = useState(null); // Map parkod → stkperm from reference XLSX
+  const [magasins, setMagasins] = useState([]);
+  const [selectedMagasin, setSelectedMagasin] = useState('');
   const refFileRef = useRef(null);
 
   const loadSummary = async () => {
     setLoading(true);
     try {
-      const data = await api.getSummary();
+      const data = await api.getSummary(selectedMagasin || undefined);
       setSummary(data);
     } catch (err) {
       console.error('Erreur:', err);
@@ -33,6 +41,14 @@ function AdminDashboard() {
   };
 
   useEffect(() => { loadSummary(); }, []);
+
+  useEffect(() => {
+    api.getMagasins().then(setMagasins).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (summary) loadSummary();
+  }, [selectedMagasin]);
 
   useLiveUpdates(
     (product) => {
@@ -136,6 +152,8 @@ function AdminDashboard() {
   };
 
   const exportSql = () => {
+    const currentMag = magasins.find(m => String(m.id) === selectedMagasin);
+    const cmag = currentMag ? currentMag.code : '0002';
     const lines = ['# Requêtes STKPERM — Surstock', ''];
     for (const p of filteredProducts) {
       if (!p.parkod || p.qty_sent === null) continue;
@@ -159,7 +177,7 @@ function AdminDashboard() {
         stkperm = Math.max(0, p.qty_requested - p.qty_sent);
       }
 
-      lines.push(`UPDATE ARTMAG SET STKPERM = ${stkperm} WHERE CMAG = '0002' AND CMARQ = '${cmarq}' AND CCATEG = '${ccateg}' AND CPROD = '${cprod}';`);
+      lines.push(`UPDATE ARTMAG SET STKPERM = ${stkperm} WHERE CMAG = '${cmag}' AND CMARQ = '${cmarq}' AND CCATEG = '${ccateg}' AND CPROD = '${cprod}';`);
     }
     const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -387,6 +405,10 @@ function AdminDashboard() {
       )}
 
       <div className="filter-bar">
+        <select className="brand-select" value={selectedMagasin} onChange={(e) => setSelectedMagasin(e.target.value)}>
+          <option value="">Tous les magasins</option>
+          {magasins.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
         <input type="text" placeholder="Rechercher EAN, PARKOD, libellé..."
           value={search} onChange={(e) => setSearch(e.target.value)} className="search-input" />
         <select className="brand-select" value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)}>
@@ -423,7 +445,7 @@ function AdminDashboard() {
           <input type="file" accept=".xlsx,.xls" ref={refFileRef} onChange={handleRefXlsx} style={{ display: 'none' }} />
         </label>
         <button className="btn btn-secondary" onClick={exportSql}>STKPERM .md</button>
-        <button className="btn btn-secondary" onClick={() => setShowTransfert(true)}>Transfert</button>
+        <button className="btn btn-secondary" onClick={() => { setTransfertParams(getDefaultTransfertParams()); setShowTransfert(true); }}>Transfert</button>
         <button className="btn btn-primary" onClick={markFilteredAsExported}>Marquer traités</button>
         <button className="btn btn-secondary" onClick={unmarkFilteredAsExported}>Démarquer</button>
       </div>

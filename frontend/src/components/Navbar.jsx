@@ -50,6 +50,9 @@ function Navbar({ isAdmin, isStore, isDepot, onLogout }) {
             <NavLink to="/admin/reglages" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={closeMenu}>
               Réglages
             </NavLink>
+            <NavLink to="/admin/magasins" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={closeMenu}>
+              Magasins
+            </NavLink>
           </div>
           {isAdmin && (
             <div className="nav-notif-section">

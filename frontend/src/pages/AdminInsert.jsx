@@ -13,6 +13,8 @@ function AdminInsert() {
   const [message, setMessage] = useState(null);
   const [bulkText, setBulkText] = useState('');
   const [showBulk, setShowBulk] = useState(false);
+  const [magasins, setMagasins] = useState([]);
+  const [selectedMagasin, setSelectedMagasin] = useState('');
   const fileInputRef = useRef(null);
 
   const loadProducts = async () => {
@@ -26,6 +28,10 @@ function AdminInsert() {
 
   useEffect(() => {
     loadProducts();
+    api.getMagasins().then(mags => {
+      setMagasins(mags);
+      if (mags.length === 1) setSelectedMagasin(String(mags[0].id));
+    }).catch(() => {});
   }, []);
 
   useLiveUpdates(
@@ -46,9 +52,13 @@ function AdminInsert() {
       showMsg('Tous les champs sont requis', 'error');
       return;
     }
+    if (!selectedMagasin) {
+      showMsg('Veuillez sélectionner un magasin', 'error');
+      return;
+    }
     try {
       const fullLabel = marque.trim() ? `${marque.trim()} - ${label.trim()}` : label.trim();
-      await api.addProduct({ ean: ean.trim(), parkod: parkod.trim() || null, label: fullLabel, qty_requested: parseInt(qtyRequested) });
+      await api.addProduct({ ean: ean.trim(), parkod: parkod.trim() || null, label: fullLabel, qty_requested: parseInt(qtyRequested), magasin_id: parseInt(selectedMagasin) });
       showMsg(`Produit "${fullLabel}" ajouté`);
       setEan(''); setParkod(''); setMarque(''); setLabel(''); setQtyRequested('');
       loadProducts();
@@ -70,8 +80,9 @@ function AdminInsert() {
       }
     }
     if (items.length === 0) { showMsg('Aucun produit valide trouvé', 'error'); return; }
+    if (!selectedMagasin) { showMsg('Veuillez sélectionner un magasin', 'error'); return; }
     try {
-      const result = await api.addProductsBulk(items);
+      const result = await api.addProductsBulk(items, parseInt(selectedMagasin));
       showMsg(`${result.inserted} produit(s) importé(s)`);
       setBulkText(''); setShowBulk(false); loadProducts();
     } catch (err) { showMsg('Erreur lors de l\'import', 'error'); }
@@ -96,8 +107,9 @@ function AdminInsert() {
       }
     }
     if (items.length === 0) { showMsg('Aucun produit valide trouvé dans le fichier', 'error'); fileInputRef.current.value = ''; return; }
+    if (!selectedMagasin) { showMsg('Veuillez sélectionner un magasin', 'error'); fileInputRef.current.value = ''; return; }
     try {
-      const result = await api.addProductsBulk(items);
+      const result = await api.addProductsBulk(items, parseInt(selectedMagasin));
       showMsg(`${result.inserted} produit(s) importé(s) depuis le fichier XLSX`);
       loadProducts();
     } catch (err) { showMsg('Erreur lors de l\'import XLSX', 'error'); }
@@ -121,6 +133,13 @@ function AdminInsert() {
       {message && <div className={`alert alert-${message.type}`}>{message.text}</div>}
 
       <form onSubmit={handleAdd} className="insert-form">
+        <div className="form-group" style={{ marginBottom: 16 }}>
+          <label>Magasin destinataire</label>
+          <select className="brand-select" value={selectedMagasin} onChange={(e) => setSelectedMagasin(e.target.value)} required>
+            <option value="">Sélectionner un magasin</option>
+            {magasins.map(m => <option key={m.id} value={m.id}>{m.name} ({m.code})</option>)}
+          </select>
+        </div>
         <div className="form-row">
           <div className="form-group">
             <label>Code EAN</label>

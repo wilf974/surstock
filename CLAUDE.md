@@ -1,7 +1,7 @@
 # Surstock - Plateforme de Gestion de Surstock
 
 ## Description
-Plateforme full-stack pour gérer les transferts de surstock entre l'entrepôt, le magasin "Maison Blanche" et le dépôt. L'admin envoie une liste de produits, le magasin scanne et confirme les quantités envoyées, le dépôt scanne pour confirmer la réception (scan unitaire, chaque bip = +1).
+Plateforme full-stack multi-magasin pour gérer les transferts de surstock entre l'entrepôt, les magasins et le dépôt. L'admin envoie une liste de produits vers un magasin spécifique, le magasin scanne et confirme les quantités envoyées, le dépôt sélectionne un magasin puis scanne pour confirmer la réception (scan unitaire, chaque bip = +1).
 
 ## Stack Technique
 - **Backend** : Node.js + Express + sql.js (SQLite en JavaScript pur)
@@ -52,8 +52,9 @@ Surstock/
 │       │   ├── AdminInsert.jsx     # Saisie produits (unitaire + copier/coller + import XLSX 5 colonnes)
 │       │   ├── AdminDashboard.jsx  # Tableau de bord complet (voir détails ci-dessous)
 │       │   ├── AdminSettings.jsx   # Réglages SMTP (host, port, encryption, user, mdp, from, to)
-│       │   ├── StoreList.jsx       # Magasin: scan douchette/caméra/manuel + valider à 0 + impression
-│       │   ├── DepotList.jsx       # Dépôt: scan unitaire (+1 par bip) + caméra/manuel
+│       │   ├── AdminMagasins.jsx   # CRUD magasins (nom, code CMAG, mot de passe)
+│       │   ├── StoreList.jsx       # Magasin: scan douchette/caméra/manuel + valider à 0 + impression (filtré par magasinId)
+│       │   ├── DepotList.jsx       # Dépôt: sélection magasin + scan unitaire (+1 par bip) + caméra/manuel
 │       │   └── StoreScan.jsx       # OBSOLÈTE - redirige vers StoreList
 │       └── components/
 │           ├── Navbar.jsx            # Hamburger mobile, sections Magasin/Dépôt/Admin, déconnexion
@@ -94,6 +95,15 @@ Table `products` :
 - `exported_at` TEXT NULL (tag "traité" pour l'admin)
 - `created_at` TEXT (auto)
 
+- `magasin_id` INTEGER DEFAULT 1 (FK vers magasins)
+
+Table `magasins` :
+- `id` INTEGER PK AUTOINCREMENT
+- `name` TEXT NOT NULL (nom du magasin)
+- `code` TEXT NOT NULL UNIQUE (code CMAG, ex: '0002')
+- `store_password_hash` TEXT NULL (hash SHA-256 du mot de passe magasin)
+- `created_at` TEXT (auto)
+
 Table `settings` (clé-valeur pour config SMTP) :
 - `key` TEXT PK
 - `value` TEXT NOT NULL
@@ -116,15 +126,15 @@ Règles auto :
 ## Routes API
 
 ### Auth (`/api/auth`)
-- `POST /login` — `{password, role}` → `{token, role}`
+- `POST /login` — `{password, role}` → `{token, role, magasinId?, magasinName?}` (store login retourne magasinId)
 - `POST /logout`
-- `GET /check` → `{authenticated, role}`
+- `GET /check` → `{authenticated, role, magasinId?}`
 
 ### Produits (`/api/products`)
-- `GET /?status=pending|confirmed|awaiting_receipt|received` (requireAuth)
+- `GET /?status=pending|confirmed|awaiting_receipt|received&magasin_id=X` (requireAuth, auto-filtré pour store)
 - `GET /ean/:ean` (requireAuth, padStart 13)
-- `POST /` — ajout unitaire (requireAdmin)
-- `POST /bulk` — import en masse, body limit 10mb (requireAdmin)
+- `POST /` — ajout unitaire `{..., magasin_id}` (requireAdmin)
+- `POST /bulk` — import en masse `{products, magasin_id}`, body limit 10mb (requireAdmin)
 - `PATCH /export` — marquer traités `{ids}` (requireAdmin)
 - `PATCH /unexport` — démarquer `{ids}` (requireAdmin)
 - `DELETE /:id` (requireAdmin)
@@ -134,13 +144,19 @@ Règles auto :
 - `PATCH /:id/confirm` — `{qty_sent}`, si 0 auto-valide dépôt (requireStore)
 - `PATCH /:id/reset` (requireAdmin)
 
+### Magasins (`/api/magasins`)
+- `GET /` — liste tous les magasins (requireAuth)
+- `POST /` — créer `{name, code, password}` (requireAdmin)
+- `PUT /:id` — modifier `{name, code, password?}` (requireAdmin)
+- `DELETE /:id` — supprimer (requireAdmin, échoue si produits existent)
+
 ### Dépôt (`/api/depot`)
-- `GET /ean/:ean` — cherche produit envoyé non complètement reçu (requireDepot)
+- `GET /ean/:ean?magasin_id=X` — cherche produit envoyé non complètement reçu (requireDepot)
 - `PATCH /:id/scan` — incrémente qty_received +1 (requireDepot)
 - `PATCH /:id/reset` (requireAdmin)
 
 ### Dashboard (`/api/dashboard`)
-- `GET /summary` — totaux + tous les produits avec diff (requireAdmin)
+- `GET /summary?magasin_id=X` — totaux + tous les produits avec diff (requireAdmin)
 
 ### Settings (`/api/settings`)
 - `GET /smtp` — config masquée (requireAdmin)
@@ -158,10 +174,11 @@ Règles auto :
 ## Routes Frontend
 - `/` → `/magasin/liste`
 - `/magasin/liste` — scan douchette/caméra/manuel + valider à 0 + impression + filtre marque (auth store)
-- `/depot/liste` — réception scan unitaire + caméra/manuel + filtre marque (auth depot)
-- `/admin/saisie` — saisie produits + import XLSX + live update (auth admin)
-- `/admin/tableau-de-bord` — dashboard complet (auth admin)
+- `/depot/liste` — sélection magasin + réception scan unitaire + caméra/manuel + filtre marque (auth depot)
+- `/admin/saisie` — saisie produits + sélecteur magasin + import XLSX + live update (auth admin)
+- `/admin/tableau-de-bord` — dashboard complet + filtre magasin (auth admin)
 - `/admin/reglages` — config SMTP (auth admin)
+- `/admin/magasins` — CRUD magasins (auth admin)
 
 ## Tableau de bord admin — Détails
 - Cartes résumé : total, envoyés, en attente, écart magasin, réceptionnés, écart dépôt
@@ -174,7 +191,7 @@ Règles auto :
 - **Exports** : XLSX (PARKOD + écart), STKPERM .md (avec import réf XLSX auto), fichier transfert (format WinDev)
 
 ## Export STKPERM
-- Génère des requêtes SQL `UPDATE ARTMAG SET STKPERM = X WHERE CMAG = '0002' AND CMARQ/CCATEG/CPROD`
+- Génère des requêtes SQL `UPDATE ARTMAG SET STKPERM = X WHERE CMAG = '{code_magasin}' AND CMARQ/CCATEG/CPROD`
 - PARKOD décomposé : CMARQ = 3 premiers chars, CCATEG = 2 suivants, CPROD = 3 restants
 - **Avec réf XLSX** (bouton "Charger réf. XLSX") : colonne G = PARKOD 8 chars, colonne AN = STKPERM
   - Si AN > 0 → STKPERM = valeur du XLSX

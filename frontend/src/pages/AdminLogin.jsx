@@ -24,10 +24,10 @@ function AdminLogin({ onLogin, role = 'admin' }) {
       const hashBuffer = await crypto.subtle.digest('SHA-256', data);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      const { token } = await api.login(hashHex, role);
+      const { token, magasinId } = await api.login(hashHex, role);
       sessionStorage.setItem('auth_token', token);
       sessionStorage.setItem('auth_role', role);
-      onLogin(role);
+      onLogin(role, magasinId);
     } catch (err) {
       setError('Mot de passe incorrect');
     } finally {
