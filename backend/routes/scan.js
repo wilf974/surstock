@@ -34,17 +34,19 @@ router.patch('/:id/confirm', (req, res) => {
   }
 
   const updated = queryOne('SELECT * FROM products WHERE id = ?', [parseInt(id)]);
+  const mag = queryOne('SELECT name FROM magasins WHERE id = ?', [updated.magasin_id]);
+  const magName = mag ? mag.name : 'Magasin';
 
   // Notification in-app
   const diff = parseInt(qty_sent) - updated.qty_requested;
   if (diff !== 0) {
     addNotification(
-      `Magasin: ${updated.label} — envoyé ${qty_sent} / demandé ${updated.qty_requested} (écart ${diff > 0 ? '+' : ''}${diff})`,
+      `${magName}: ${updated.label} — envoyé ${qty_sent} / demandé ${updated.qty_requested} (écart ${diff > 0 ? '+' : ''}${diff})`,
       'warning'
     );
   } else {
     addNotification(
-      `Magasin: ${updated.label} — confirmé ${qty_sent} (OK)`,
+      `${magName}: ${updated.label} — confirmé ${qty_sent} (OK)`,
       'info'
     );
   }

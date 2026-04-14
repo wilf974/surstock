@@ -4,7 +4,10 @@ const { queryAll } = require('../db');
 
 // GET /api/dashboard/summary - Résumé pour le tableau de bord admin
 router.get('/summary', (req, res) => {
-  const products = queryAll('SELECT * FROM products ORDER BY created_at DESC');
+  const magId = req.query.magasin_id ? parseInt(req.query.magasin_id) : null;
+  const where = magId ? ' WHERE magasin_id = ?' : '';
+  const params = magId ? [magId] : [];
+  const products = queryAll('SELECT * FROM products' + where + ' ORDER BY created_at DESC', params);
 
   const total = products.length;
   const confirmed = products.filter(p => p.qty_sent !== null).length;
