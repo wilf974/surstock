@@ -11,6 +11,7 @@ const depotRoutes = require('./routes/depot');
 const dashboardRoutes = require('./routes/dashboard');
 const settingsRoutes = require('./routes/settings');
 const { router: notificationsRoutes } = require('./routes/notifications');
+const magasinsRoutes = require('./routes/magasins');
 const { router: authRoutes, requireAdmin, requireStore, requireDepot, requireAuth } = require('./routes/auth');
 
 const app = express();
@@ -63,6 +64,7 @@ app.use('/api/depot', requireDepot, depotRoutes);
 app.use('/api/dashboard', requireAdmin, dashboardRoutes);
 app.use('/api/settings', requireAdmin, settingsRoutes);
 app.use('/api/notifications', requireAdmin, notificationsRoutes);
+app.use('/api/magasins', requireAdmin, magasinsRoutes);
 
 // SSE — mise à jour en temps réel (token en query param car EventSource ne supporte pas les headers)
 const { addClient } = require('./events');
