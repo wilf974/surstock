@@ -61,6 +61,27 @@ async function getDb() {
     )
   `);
 
+  // Table magasins (multi-magasin V2)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS magasins (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      code TEXT NOT NULL UNIQUE,
+      store_password_hash TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now', 'localtime'))
+    )
+  `);
+
+  // Auto-insert Maison Blanche si la table est vide
+  const magasinCount = db.exec("SELECT COUNT(*) as cnt FROM magasins");
+  if (magasinCount.length === 0 || magasinCount[0].values[0][0] === 0) {
+    const hash = process.env.STORE_PASSWORD_HASH || 'not_set';
+    db.run("INSERT INTO magasins (id, name, code, store_password_hash) VALUES (1, 'Maison Blanche', '0002', ?)", [hash]);
+  }
+
+  // Migration : ajouter magasin_id sur products (V2 multi-magasin)
+  try { db.run('ALTER TABLE products ADD COLUMN magasin_id INTEGER DEFAULT 1'); } catch (e) {}
+
   saveDb();
   return db;
 }
