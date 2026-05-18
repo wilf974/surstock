@@ -191,6 +191,93 @@ function BatchZeroModalPortal() {
 }
 
 // ──────────────────────────────────────────────
+// Popup "Valider à 0 d'un coup" — un seul code pour tout le lot
+// ──────────────────────────────────────────────
+function BulkSingleCodeModalPortal() {
+  const [items, setItems] = useState(null);
+  const [code, setCode] = useState('');
+  const [message, setMessage] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const callbackRef = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    window.__bulkSingleCodeModal = {
+      open(products, onDone) {
+        callbackRef.current = onDone;
+        setItems(products);
+        setCode('');
+        setMessage(null);
+        setSubmitting(false);
+      },
+      isOpen() { return !!items; }
+    };
+    return () => { window.__bulkSingleCodeModal = null; };
+  });
+
+  useEffect(() => {
+    if (items) {
+      requestAnimationFrame(() => requestAnimationFrame(() => inputRef.current?.focus()));
+    }
+  }, [items]);
+
+  if (!items) return null;
+
+  const close = () => { setItems(null); setMessage(null); };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!code.trim()) { setMessage('Code requis'); return; }
+    setSubmitting(true);
+    try {
+      const ids = items.map(p => p.id);
+      const result = await api.bulkZeroValidate(ids, code.trim());
+      const count = result?.count || ids.length;
+      const onDone = callbackRef.current;
+      setItems(null);
+      setMessage(null);
+      onDone?.(count);
+    } catch (err) {
+      setMessage(err?.error || 'Erreur lors de la validation');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return createPortal(
+    <div className="scan-modal-overlay" onClick={close}>
+      <div className="scan-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560, width: '95vw' }}>
+        <div className="scan-modal-header">Valider à 0 d'un coup — {items.length} produit(s)</div>
+        <div className="scan-modal-body">
+          <p style={{ marginBottom: 12, fontSize: 14, color: '#666' }}>
+            Saisissez UN seul code "lot" pour valider tous les produits sélectionnés.
+          </p>
+          {message && <div className="alert alert-error" style={{ marginBottom: 12 }}>{message}</div>}
+          <div style={{ maxHeight: '30vh', overflowY: 'auto', marginBottom: 16, padding: 8, border: '1px solid #ddd', borderRadius: 4, background: '#fafafa', fontSize: 13 }}>
+            {items.map(p => <div key={p.id} style={{ padding: '2px 0' }}>• {p.label}</div>)}
+          </div>
+          <form onSubmit={handleSubmit} className="confirm-form">
+            <label className="confirm-label">
+              Code lot
+              <input ref={inputRef} type="text" inputMode="numeric" autoComplete="off"
+                value={code} onChange={(e) => setCode(e.target.value)}
+                placeholder="Code généré dans Réglages" className="qty-input" disabled={submitting} />
+            </label>
+            <div className="confirm-buttons">
+              <button type="submit" className="btn btn-danger btn-large" disabled={submitting || !code.trim()}>
+                {submitting ? 'Validation...' : `Valider ${items.length} produit(s) à 0`}
+              </button>
+              <button type="button" onClick={close} className="btn btn-secondary btn-large" disabled={submitting}>Annuler</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ──────────────────────────────────────────────
 // Ligne tableau (desktop) — mémorisée
 // ──────────────────────────────────────────────
 const ProductRow = memo(function ProductRow({ p, onZero, selected, onToggleSelect }) {
@@ -357,6 +444,16 @@ function StoreList({ magasinId }) {
     });
   }, [products, selectedIds, clearSelection]);
 
+  const openBulkSingleCodeModal = useCallback(() => {
+    const selected = products.filter(p => selectedIds.has(p.id) && p.qty_sent === null);
+    if (selected.length === 0) return;
+    window.__bulkSingleCodeModal?.open(selected, (count) => {
+      showMsg(`${count} produit(s) validé(s) à 0`, 'success');
+      clearSelection();
+      loadProducts();
+    });
+  }, [products, selectedIds, clearSelection, showMsg]);
+
   const processScannedCode = useCallback((code) => {
     const ean = code.trim().padStart(13, '0');
     if (!ean) return;
@@ -381,7 +478,7 @@ function StoreList({ magasinId }) {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (scannedRef.current || window.__zeroModal?.isOpen() || window.__batchZeroModal?.isOpen()) return;
+      if (scannedRef.current || window.__zeroModal?.isOpen() || window.__batchZeroModal?.isOpen() || window.__bulkSingleCodeModal?.isOpen()) return;
       const tag = e.target.tagName.toLowerCase();
       if (tag === 'input' || tag === 'textarea') return;
 
@@ -584,6 +681,7 @@ function StoreList({ magasinId }) {
       {/* Portal popup zéro — complètement hors de l'arbre StoreList */}
       <ZeroModalPortal />
       <BatchZeroModalPortal />
+      <BulkSingleCodeModalPortal />
 
       {/* Résumé */}
       <div className="summary-cards">
@@ -612,10 +710,24 @@ function StoreList({ magasinId }) {
         </select>
         <button className="btn btn-secondary" onClick={loadProducts}>Actualiser</button>
         <button className="btn btn-secondary" onClick={handlePrint}>Imprimer</button>
+        {filteredProducts.some(p => p.qty_sent === null) && (
+          <button className="btn btn-secondary" onClick={() => {
+            const pendingIds = filteredProducts.filter(p => p.qty_sent === null).map(p => p.id);
+            const allSelected = pendingIds.every(id => selectedIds.has(id));
+            setSelectedIds(allSelected ? new Set() : new Set(pendingIds));
+          }}>
+            {filteredProducts.filter(p => p.qty_sent === null).every(p => selectedIds.has(p.id)) && selectedIds.size > 0
+              ? 'Tout désélectionner'
+              : 'Tout sélectionner'}
+          </button>
+        )}
         {selectedIds.size > 0 && (
           <>
-            <button className="btn btn-danger" onClick={openBatchZeroModal}>
-              Valider à 0 ({selectedIds.size})
+            <button className="btn btn-danger" onClick={openBatchZeroModal} title="Un code par produit">
+              Valider à 0 ({selectedIds.size}) — codes individuels
+            </button>
+            <button className="btn btn-danger" onClick={openBulkSingleCodeModal} title="Un seul code pour tout le lot">
+              Valider à 0 ({selectedIds.size}) — code unique
             </button>
             <button className="btn btn-secondary" onClick={clearSelection}>Désélectionner</button>
           </>

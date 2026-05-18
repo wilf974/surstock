@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { queryOne, run } = require('../db');
+const { queryOne, queryAll, run } = require('../db');
 const { addNotification } = require('./notifications');
 const { broadcast } = require('../events');
+const { getMagasinId, getRole } = require('./auth');
 
 // PATCH /api/scan/:id/confirm - Confirmer la quantité envoyée
 router.patch('/:id/confirm', (req, res) => {
@@ -26,9 +27,12 @@ router.patch('/:id/confirm', (req, res) => {
       if (!code) {
         return res.status(400).json({ error: 'Code de validation requis' });
       }
-      const codeRow = queryOne('SELECT id, used_at FROM zero_codes WHERE code = ?', [String(code).trim()]);
+      const codeRow = queryOne('SELECT id, used_at, type FROM zero_codes WHERE code = ?', [String(code).trim()]);
       if (!codeRow) {
         return res.status(401).json({ error: 'Code incorrect' });
+      }
+      if (codeRow.type === 'bulk') {
+        return res.status(401).json({ error: 'Ce code est un code lot. Utilisez le bouton "Tout valider d\'un coup".' });
       }
       if (codeRow.used_at) {
         return res.status(401).json({ error: 'Ce code a déjà été utilisé' });
@@ -93,6 +97,76 @@ router.patch('/:id/reset', (req, res) => {
 
   broadcast('product-updated', updated);
   res.json(updated);
+});
+
+// POST /api/scan/bulk-zero - Valider plusieurs produits à 0 avec un seul code lot
+router.post('/bulk-zero', (req, res) => {
+  const { ids, code } = req.body;
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'Liste de produits requise' });
+  }
+  if (!code) {
+    return res.status(400).json({ error: 'Code requis' });
+  }
+
+  const codeRow = queryOne('SELECT id, used_at, type FROM zero_codes WHERE code = ?', [String(code).trim()]);
+  if (!codeRow) return res.status(401).json({ error: 'Code incorrect' });
+  if (codeRow.type !== 'bulk') {
+    return res.status(401).json({ error: 'Ce code est individuel. Utilisez un code "lot".' });
+  }
+  if (codeRow.used_at) return res.status(401).json({ error: 'Ce code a déjà été utilisé' });
+
+  const role = getRole(req);
+  const tokenMagasinId = getMagasinId(req);
+
+  // Récupérer les produits éligibles (en attente, magasin du token si role=store)
+  const idsInt = ids.map(i => parseInt(i)).filter(i => Number.isInteger(i));
+  if (idsInt.length === 0) return res.status(400).json({ error: 'Aucun id valide' });
+
+  const placeholders = idsInt.map(() => '?').join(',');
+  let whereExtra = '';
+  let extraParams = [];
+  if (role === 'store') {
+    whereExtra = ' AND magasin_id = ?';
+    extraParams = [tokenMagasinId];
+  }
+  const eligibles = queryAll(
+    `SELECT * FROM products WHERE id IN (${placeholders}) AND qty_sent IS NULL${whereExtra}`,
+    [...idsInt, ...extraParams]
+  );
+
+  if (eligibles.length === 0) {
+    return res.status(400).json({ error: 'Aucun produit éligible (déjà validés ou autre magasin)' });
+  }
+
+  // Consommation atomique du code lot
+  const magasinIdForCode = eligibles[0].magasin_id || tokenMagasinId || null;
+  run(
+    "UPDATE zero_codes SET used_at = datetime('now', 'localtime'), used_by_magasin_id = ?, used_count = ? WHERE id = ? AND used_at IS NULL",
+    [magasinIdForCode, eligibles.length, codeRow.id]
+  );
+  const reread = queryOne('SELECT used_at FROM zero_codes WHERE id = ?', [codeRow.id]);
+  if (!reread || !reread.used_at) {
+    return res.status(401).json({ error: 'Ce code a déjà été utilisé' });
+  }
+
+  // Valider chaque produit (qty_sent=0 + auto-réception)
+  const updated = [];
+  for (const p of eligibles) {
+    run(
+      "UPDATE products SET qty_sent = 0, scanned_at = datetime('now', 'localtime'), qty_received = 0, received_at = datetime('now', 'localtime') WHERE id = ?",
+      [p.id]
+    );
+    const rerd = queryOne('SELECT * FROM products WHERE id = ?', [p.id]);
+    updated.push(rerd);
+    const mag = queryOne('SELECT name FROM magasins WHERE id = ?', [rerd.magasin_id]);
+    const magName = mag ? mag.name : 'Magasin';
+    addNotification(`${magName}: ${rerd.label} — validé à 0 (lot)`, 'info');
+    broadcast('product-updated', rerd);
+  }
+
+  res.json({ success: true, count: updated.length, products: updated });
 });
 
 module.exports = router;

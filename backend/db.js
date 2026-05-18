@@ -94,6 +94,11 @@ async function getDb() {
     )
   `);
 
+  // Migration : type de code ('single' = 1 code par produit, 'bulk' = 1 code pour un lot)
+  try { db.run("ALTER TABLE zero_codes ADD COLUMN type TEXT DEFAULT 'single'"); } catch (e) {}
+  // Migration : compteur produits validés pour codes bulk
+  try { db.run('ALTER TABLE zero_codes ADD COLUMN used_count INTEGER DEFAULT 0'); } catch (e) {}
+
   saveDb();
   return db;
 }

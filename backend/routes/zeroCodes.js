@@ -18,7 +18,8 @@ function generateUniqueCode() {
 router.get('/', (req, res) => {
   try {
     const codes = queryAll(`
-      SELECT zc.id, zc.code, zc.created_at, zc.used_at, zc.used_by_magasin_id, zc.used_for_product_id,
+      SELECT zc.id, zc.code, zc.type, zc.used_count, zc.created_at, zc.used_at,
+             zc.used_by_magasin_id, zc.used_for_product_id,
              m.name as used_by_magasin_name, p.label as used_for_product_label
       FROM zero_codes zc
       LEFT JOIN magasins m ON m.id = zc.used_by_magasin_id
@@ -31,12 +32,13 @@ router.get('/', (req, res) => {
   }
 });
 
-// POST / — générer un nouveau code
+// POST / — générer un nouveau code (type 'single' ou 'bulk')
 router.post('/', (req, res) => {
   try {
+    const type = req.body && req.body.type === 'bulk' ? 'bulk' : 'single';
     const code = generateUniqueCode();
-    const result = run('INSERT INTO zero_codes (code) VALUES (?)', [code]);
-    const created = queryOne('SELECT id, code, created_at, used_at FROM zero_codes WHERE id = ?', [result.lastInsertRowid]);
+    const result = run('INSERT INTO zero_codes (code, type) VALUES (?, ?)', [code, type]);
+    const created = queryOne('SELECT id, code, type, used_count, created_at, used_at FROM zero_codes WHERE id = ?', [result.lastInsertRowid]);
     res.status(201).json(created);
   } catch (err) {
     res.status(500).json({ error: err.message || 'Erreur serveur' });

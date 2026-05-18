@@ -16,7 +16,7 @@ function AdminSettings() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [zeroCodes, setZeroCodes] = useState([]);
-  const [generating, setGenerating] = useState(false);
+  const [generatingType, setGeneratingType] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
 
   useEffect(() => { loadSettings(); loadZeroCodes(); }, []);
@@ -49,16 +49,16 @@ function AdminSettings() {
     }
   };
 
-  const handleGenerate = async () => {
-    setGenerating(true);
+  const handleGenerate = async (type) => {
+    setGeneratingType(type);
     try {
-      await api.generateZeroCode();
+      await api.generateZeroCode(type);
       await loadZeroCodes();
       showMsg('Nouveau code généré');
     } catch (err) {
       showMsg(err.error || 'Erreur lors de la génération', 'error');
     } finally {
-      setGenerating(false);
+      setGeneratingType(null);
     }
   };
 
@@ -181,44 +181,90 @@ function AdminSettings() {
       </form>
 
       <div className="insert-form" style={{ marginTop: 32 }}>
-        <h2 style={{ marginBottom: 8, fontSize: 18 }}>Codes "Valider à 0" (usage unique)</h2>
-        <p style={{ marginBottom: 16, color: '#666', fontSize: 14 }}>
-          Génère un code aléatoire à 6 chiffres pour autoriser un magasin à valider un produit à 0. Chaque code n'est utilisable qu'une seule fois. Pour valider plusieurs produits, générez plusieurs codes.
-        </p>
+        <h2 style={{ marginBottom: 16, fontSize: 18 }}>Codes "Valider à 0" (usage unique)</h2>
 
-        <button type="button" className="btn btn-primary" onClick={handleGenerate} disabled={generating}>
-          {generating ? 'Génération...' : 'Générer un nouveau code'}
-        </button>
+        {/* Section 1 : codes individuels */}
+        <div style={{ paddingBottom: 24, borderBottom: '1px solid #e0e0e0' }}>
+          <h3 style={{ marginBottom: 8, fontSize: 16 }}>Codes individuels — 1 code = 1 produit</h3>
+          <p style={{ marginBottom: 12, color: '#666', fontSize: 14 }}>
+            Pour valider quelques produits sélectionnés à 0. Chaque code valide UN seul produit. Génère autant de codes que de produits à valider.
+          </p>
+          <button type="button" className="btn btn-primary" onClick={() => handleGenerate('single')} disabled={generatingType === 'single'}>
+            {generatingType === 'single' ? 'Génération...' : 'Générer un code individuel'}
+          </button>
 
-        <div style={{ marginTop: 24 }}>
-          <h3 style={{ marginBottom: 12, fontSize: 16 }}>Codes actifs</h3>
-          {zeroCodes.filter(c => !c.used_at).length === 0 ? (
-            <p style={{ color: '#666', fontSize: 14 }}>Aucun code actif.</p>
-          ) : (
-            <table className="dashboard-table" style={{ width: '100%' }}>
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Généré le</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {zeroCodes.filter(c => !c.used_at).map(c => (
-                  <tr key={c.id}>
-                    <td style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 18, fontWeight: 'bold', letterSpacing: 2 }}>{c.code}</td>
-                    <td>{c.created_at}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      <button type="button" className="btn btn-secondary" style={{ marginRight: 8 }} onClick={() => handleCopyCode(c.id, c.code)}>
-                        {copiedId === c.id ? 'Copié !' : 'Copier'}
-                      </button>
-                      <button type="button" className="btn btn-danger" onClick={() => handleDeleteCode(c.id)}>Supprimer</button>
-                    </td>
+          <div style={{ marginTop: 16 }}>
+            <h4 style={{ marginBottom: 8, fontSize: 14 }}>Codes individuels actifs</h4>
+            {zeroCodes.filter(c => !c.used_at && (c.type || 'single') === 'single').length === 0 ? (
+              <p style={{ color: '#666', fontSize: 14 }}>Aucun code individuel actif.</p>
+            ) : (
+              <table className="dashboard-table" style={{ width: '100%' }}>
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Généré le</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody>
+                  {zeroCodes.filter(c => !c.used_at && (c.type || 'single') === 'single').map(c => (
+                    <tr key={c.id}>
+                      <td style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 18, fontWeight: 'bold', letterSpacing: 2 }}>{c.code}</td>
+                      <td>{c.created_at}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button type="button" className="btn btn-secondary" style={{ marginRight: 8 }} onClick={() => handleCopyCode(c.id, c.code)}>
+                          {copiedId === c.id ? 'Copié !' : 'Copier'}
+                        </button>
+                        <button type="button" className="btn btn-danger" onClick={() => handleDeleteCode(c.id)}>Supprimer</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
+        {/* Section 2 : codes lot */}
+        <div style={{ paddingTop: 24 }}>
+          <h3 style={{ marginBottom: 8, fontSize: 16 }}>Codes lot — 1 code = N produits</h3>
+          <p style={{ marginBottom: 12, color: '#666', fontSize: 14 }}>
+            Pour valider PLUSIEURS produits à 0 en une seule opération (ex: tout valider d'un coup). UN seul code valide tous les produits sélectionnés. Usage unique.
+          </p>
+          <button type="button" className="btn btn-primary" onClick={() => handleGenerate('bulk')} disabled={generatingType === 'bulk'}>
+            {generatingType === 'bulk' ? 'Génération...' : 'Générer un code lot'}
+          </button>
+
+          <div style={{ marginTop: 16 }}>
+            <h4 style={{ marginBottom: 8, fontSize: 14 }}>Codes lot actifs</h4>
+            {zeroCodes.filter(c => !c.used_at && c.type === 'bulk').length === 0 ? (
+              <p style={{ color: '#666', fontSize: 14 }}>Aucun code lot actif.</p>
+            ) : (
+              <table className="dashboard-table" style={{ width: '100%' }}>
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Généré le</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {zeroCodes.filter(c => !c.used_at && c.type === 'bulk').map(c => (
+                    <tr key={c.id}>
+                      <td style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 18, fontWeight: 'bold', letterSpacing: 2 }}>{c.code}</td>
+                      <td>{c.created_at}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button type="button" className="btn btn-secondary" style={{ marginRight: 8 }} onClick={() => handleCopyCode(c.id, c.code)}>
+                          {copiedId === c.id ? 'Copié !' : 'Copier'}
+                        </button>
+                        <button type="button" className="btn btn-danger" onClick={() => handleDeleteCode(c.id)}>Supprimer</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
 
         {zeroCodes.filter(c => c.used_at).length > 0 && (
@@ -228,8 +274,9 @@ function AdminSettings() {
               <thead>
                 <tr>
                   <th>Code</th>
+                  <th>Type</th>
                   <th>Magasin</th>
-                  <th>Produit</th>
+                  <th>Produit / Nb</th>
                   <th>Utilisé le</th>
                 </tr>
               </thead>
@@ -237,8 +284,9 @@ function AdminSettings() {
                 {zeroCodes.filter(c => c.used_at).map(c => (
                   <tr key={c.id}>
                     <td style={{ fontFamily: 'JetBrains Mono, monospace', color: '#999' }}>{c.code}</td>
+                    <td>{c.type === 'bulk' ? 'Lot' : 'Individuel'}</td>
                     <td>{c.used_by_magasin_name || '—'}</td>
-                    <td>{c.used_for_product_label || '—'}</td>
+                    <td>{c.type === 'bulk' ? `${c.used_count || 0} produits` : (c.used_for_product_label || '—')}</td>
                     <td>{c.used_at}</td>
                   </tr>
                 ))}

@@ -66,8 +66,9 @@ export const api = {
 
   // Codes valider à 0
   listZeroCodes: () => request('/zero-codes'),
-  generateZeroCode: () => request('/zero-codes', { method: 'POST' }),
+  generateZeroCode: (type = 'single') => request('/zero-codes', { method: 'POST', body: JSON.stringify({ type }) }),
   deleteZeroCode: (id) => request(`/zero-codes/${id}`, { method: 'DELETE' }),
+  bulkZeroValidate: (ids, code) => request('/scan/bulk-zero', { method: 'POST', body: JSON.stringify({ ids, code }) }),
 
   // Notifications
   getNotifications: () => request('/notifications'),
