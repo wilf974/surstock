@@ -12,6 +12,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const settingsRoutes = require('./routes/settings');
 const { router: notificationsRoutes } = require('./routes/notifications');
 const magasinsRoutes = require('./routes/magasins');
+const zeroCodesRoutes = require('./routes/zeroCodes');
 const { router: authRoutes, requireAdmin, requireStore, requireDepot, requireAuth } = require('./routes/auth');
 
 const app = express();
@@ -70,6 +71,7 @@ app.use('/api/magasins', (req, res, next) => {
   if (req.method === 'GET') return requireAuth(req, res, next);
   requireAdmin(req, res, next);
 }, magasinsRoutes);
+app.use('/api/zero-codes', requireAdmin, zeroCodesRoutes);
 
 // SSE — mise à jour en temps réel (token en query param car EventSource ne supporte pas les headers)
 const { addClient } = require('./events');

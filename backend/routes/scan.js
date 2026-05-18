@@ -7,7 +7,7 @@ const { broadcast } = require('../events');
 // PATCH /api/scan/:id/confirm - Confirmer la quantité envoyée
 router.patch('/:id/confirm', (req, res) => {
   const { id } = req.params;
-  const { qty_sent } = req.body;
+  const { qty_sent, code } = req.body;
 
   if (qty_sent === undefined || qty_sent === null) {
     return res.status(400).json({ error: 'La quantité envoyée est requise' });
@@ -21,6 +21,28 @@ router.patch('/:id/confirm', (req, res) => {
 
   const qtyVal = parseInt(qty_sent);
   if (qtyVal === 0) {
+    // Validation à 0 : exige un code à usage unique non utilisé (sauf si qty_requested == 0)
+    if (product.qty_requested > 0) {
+      if (!code) {
+        return res.status(400).json({ error: 'Code de validation requis' });
+      }
+      const codeRow = queryOne('SELECT id, used_at FROM zero_codes WHERE code = ?', [String(code).trim()]);
+      if (!codeRow) {
+        return res.status(401).json({ error: 'Code incorrect' });
+      }
+      if (codeRow.used_at) {
+        return res.status(401).json({ error: 'Ce code a déjà été utilisé' });
+      }
+      // Consommer le code de manière atomique
+      run(
+        "UPDATE zero_codes SET used_at = datetime('now', 'localtime'), used_by_magasin_id = ?, used_for_product_id = ? WHERE id = ? AND used_at IS NULL",
+        [product.magasin_id || null, parseInt(id), codeRow.id]
+      );
+      const reread = queryOne('SELECT used_at FROM zero_codes WHERE id = ?', [codeRow.id]);
+      if (!reread || !reread.used_at) {
+        return res.status(401).json({ error: 'Ce code a déjà été utilisé' });
+      }
+    }
     // Si envoyé 0, auto-valider aussi le dépôt
     run(
       "UPDATE products SET qty_sent = 0, scanned_at = datetime('now', 'localtime'), qty_received = 0, received_at = datetime('now', 'localtime') WHERE id = ?",

@@ -82,6 +82,18 @@ async function getDb() {
   // Migration : ajouter magasin_id sur products (V2 multi-magasin)
   try { db.run('ALTER TABLE products ADD COLUMN magasin_id INTEGER DEFAULT 1'); } catch (e) {}
 
+  // Table zero_codes : codes à usage unique pour "Valider à 0" magasin
+  db.run(`
+    CREATE TABLE IF NOT EXISTS zero_codes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL UNIQUE,
+      created_at TEXT DEFAULT (datetime('now', 'localtime')),
+      used_at TEXT DEFAULT NULL,
+      used_by_magasin_id INTEGER DEFAULT NULL,
+      used_for_product_id INTEGER DEFAULT NULL
+    )
+  `);
+
   saveDb();
   return db;
 }

@@ -42,7 +42,7 @@ export const api = {
   markUnexported: (ids) => request('/products/unexport', { method: 'PATCH', body: JSON.stringify({ ids }) }),
 
   // Scan
-  confirmScan: (id, qty_sent) => request(`/scan/${id}/confirm`, { method: 'PATCH', body: JSON.stringify({ qty_sent }) }),
+  confirmScan: (id, qty_sent, code) => request(`/scan/${id}/confirm`, { method: 'PATCH', body: JSON.stringify(code !== undefined ? { qty_sent, code } : { qty_sent }) }),
   resetScan: (id) => request(`/scan/${id}/reset`, { method: 'PATCH' }),
 
   // Dépôt
@@ -63,6 +63,11 @@ export const api = {
   getSmtpSettings: () => request('/settings/smtp'),
   saveSmtpSettings: (data) => request('/settings/smtp', { method: 'PUT', body: JSON.stringify(data) }),
   testSmtp: () => request('/settings/smtp/test', { method: 'POST' }),
+
+  // Codes valider à 0
+  listZeroCodes: () => request('/zero-codes'),
+  generateZeroCode: () => request('/zero-codes', { method: 'POST' }),
+  deleteZeroCode: (id) => request(`/zero-codes/${id}`, { method: 'DELETE' }),
 
   // Notifications
   getNotifications: () => request('/notifications'),

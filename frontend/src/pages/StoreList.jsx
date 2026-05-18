@@ -45,18 +45,18 @@ function ZeroModalPortal() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (code !== '123456') {
-      setMessage('Code incorrect');
+    if (!code.trim()) {
+      setMessage('Code requis');
       return;
     }
     try {
-      await api.confirmScan(product.id, 0);
+      await api.confirmScan(product.id, 0, code.trim());
       const label = product.label;
       setProduct(null);
       setMessage(null);
       callbackRef.current?.(label);
-    } catch {
-      setMessage('Erreur lors de la validation');
+    } catch (err) {
+      setMessage(err?.error || 'Erreur lors de la validation');
     }
   };
 
@@ -90,11 +90,117 @@ function ZeroModalPortal() {
 }
 
 // ──────────────────────────────────────────────
+// Popup batch "Valider à 0" — rendu via Portal
+// ──────────────────────────────────────────────
+function BatchZeroModalPortal() {
+  const [items, setItems] = useState(null); // [{product, code, status, error}]
+  const [submitting, setSubmitting] = useState(false);
+  const callbackRef = useRef(null);
+
+  useEffect(() => {
+    window.__batchZeroModal = {
+      open(products, onDone) {
+        callbackRef.current = onDone;
+        setItems(products.map(p => ({ product: p, code: '', status: 'pending', error: null })));
+        setSubmitting(false);
+      },
+      isOpen() { return !!items; }
+    };
+    return () => { window.__batchZeroModal = null; };
+  });
+
+  if (!items) return null;
+
+  const close = () => { setItems(null); callbackRef.current?.(); };
+
+  const updateCode = (idx, value) => {
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, code: value, status: 'pending', error: null } : it));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    const next = [...items];
+    for (let i = 0; i < next.length; i++) {
+      const it = next[i];
+      if (it.status === 'done') continue;
+      if (!it.code.trim()) {
+        next[i] = { ...it, status: 'error', error: 'Code requis' };
+        setItems([...next]);
+        continue;
+      }
+      try {
+        await api.confirmScan(it.product.id, 0, it.code.trim());
+        next[i] = { ...it, status: 'done', error: null };
+      } catch (err) {
+        next[i] = { ...it, status: 'error', error: err?.error || 'Erreur' };
+      }
+      setItems([...next]);
+    }
+    setSubmitting(false);
+    if (next.every(it => it.status === 'done')) {
+      setTimeout(close, 800);
+    }
+  };
+
+  const remaining = items.filter(it => it.status !== 'done').length;
+
+  return createPortal(
+    <div className="scan-modal-overlay" onClick={close}>
+      <div className="scan-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640, width: '95vw' }}>
+        <div className="scan-modal-header">Valider à 0 — {items.length} produit(s)</div>
+        <div className="scan-modal-body">
+          <p style={{ marginBottom: 12, fontSize: 14, color: '#666' }}>
+            Saisissez un code à usage unique différent pour chaque produit.
+          </p>
+          <form onSubmit={handleSubmit}>
+            <div style={{ maxHeight: '50vh', overflowY: 'auto', marginBottom: 16 }}>
+              {items.map((it, idx) => (
+                <div key={it.product.id} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, padding: 8, border: '1px solid #ddd', borderRadius: 4, background: it.status === 'done' ? '#e8f5e9' : it.status === 'error' ? '#ffebee' : '#fff' }}>
+                  <div style={{ flex: 1, fontSize: 13 }}>
+                    <div style={{ fontWeight: 'bold' }}>{it.product.label}</div>
+                    {it.error && <div style={{ color: '#c62828', fontSize: 12 }}>{it.error}</div>}
+                  </div>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    placeholder="Code"
+                    value={it.code}
+                    onChange={(e) => updateCode(idx, e.target.value)}
+                    disabled={it.status === 'done' || submitting}
+                    className="qty-input"
+                    style={{ width: 120 }}
+                  />
+                  {it.status === 'done' && <span style={{ color: '#2e7d32', fontSize: 18 }}>✓</span>}
+                </div>
+              ))}
+            </div>
+            <div className="confirm-buttons">
+              <button type="submit" className="btn btn-danger btn-large" disabled={submitting || remaining === 0}>
+                {submitting ? 'Validation...' : remaining === 0 ? 'Terminé' : `Valider à 0 (${remaining})`}
+              </button>
+              <button type="button" onClick={close} className="btn btn-secondary btn-large">Fermer</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ──────────────────────────────────────────────
 // Ligne tableau (desktop) — mémorisée
 // ──────────────────────────────────────────────
-const ProductRow = memo(function ProductRow({ p, onZero }) {
+const ProductRow = memo(function ProductRow({ p, onZero, selected, onToggleSelect }) {
   return (
     <tr>
+      <td style={{ width: 32 }}>
+        {p.qty_sent === null && (
+          <input type="checkbox" checked={selected} onChange={() => onToggleSelect(p.id)} />
+        )}
+      </td>
       <td className="ean-cell">{p.ean}</td>
       <td className="ean-cell">{p.parkod || '—'}</td>
       <td>{p.label}</td>
@@ -116,10 +222,13 @@ const ProductRow = memo(function ProductRow({ p, onZero }) {
 // ──────────────────────────────────────────────
 // Card (mobile) — mémorisée
 // ──────────────────────────────────────────────
-const ProductCard = memo(function ProductCard({ p, onZero }) {
+const ProductCard = memo(function ProductCard({ p, onZero, selected, onToggleSelect }) {
   return (
     <div className={`product-card-item ${p.qty_sent !== null ? 'status-confirmed' : 'status-pending'}`}>
       <div className="card-item-header">
+        {p.qty_sent === null && (
+          <input type="checkbox" checked={selected} onChange={() => onToggleSelect(p.id)} style={{ marginRight: 8 }} />
+        )}
         <span className="card-item-label">{p.label}</span>
         {p.qty_sent !== null
           ? <span className="badge badge-success">Confirmé</span>
@@ -166,6 +275,7 @@ function StoreList({ magasinId }) {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [manualEan, setManualEan] = useState('');
   const [brandFilter, setBrandFilter] = useState('');
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
   const qtyInputRef = useRef(null);
   const manualInputRef = useRef(null);
   const scanBufferRef = useRef('');
@@ -228,6 +338,25 @@ function StoreList({ magasinId }) {
     });
   }, [showMsg]);
 
+  const toggleSelect = useCallback((id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  const openBatchZeroModal = useCallback(() => {
+    const selected = products.filter(p => selectedIds.has(p.id) && p.qty_sent === null);
+    if (selected.length === 0) return;
+    window.__batchZeroModal?.open(selected, () => {
+      clearSelection();
+      loadProducts();
+    });
+  }, [products, selectedIds, clearSelection]);
+
   const processScannedCode = useCallback((code) => {
     const ean = code.trim().padStart(13, '0');
     if (!ean) return;
@@ -252,7 +381,7 @@ function StoreList({ magasinId }) {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (scannedRef.current || window.__zeroModal?.isOpen()) return;
+      if (scannedRef.current || window.__zeroModal?.isOpen() || window.__batchZeroModal?.isOpen()) return;
       const tag = e.target.tagName.toLowerCase();
       if (tag === 'input' || tag === 'textarea') return;
 
@@ -454,6 +583,7 @@ function StoreList({ magasinId }) {
 
       {/* Portal popup zéro — complètement hors de l'arbre StoreList */}
       <ZeroModalPortal />
+      <BatchZeroModalPortal />
 
       {/* Résumé */}
       <div className="summary-cards">
@@ -482,6 +612,14 @@ function StoreList({ magasinId }) {
         </select>
         <button className="btn btn-secondary" onClick={loadProducts}>Actualiser</button>
         <button className="btn btn-secondary" onClick={handlePrint}>Imprimer</button>
+        {selectedIds.size > 0 && (
+          <>
+            <button className="btn btn-danger" onClick={openBatchZeroModal}>
+              Valider à 0 ({selectedIds.size})
+            </button>
+            <button className="btn btn-secondary" onClick={clearSelection}>Désélectionner</button>
+          </>
+        )}
       </div>
 
       {loading ? (
@@ -493,6 +631,7 @@ function StoreList({ magasinId }) {
           <table className="table">
             <thead>
               <tr>
+                <th style={{ width: 32 }}></th>
                 <th>EAN</th>
                 <th>PARKOD</th>
                 <th>Libellé</th>
@@ -503,14 +642,14 @@ function StoreList({ magasinId }) {
             </thead>
             <tbody>
               {visibleProducts.map((p) => (
-                <ProductRow key={p.id} p={p} onZero={openZeroModal} />
+                <ProductRow key={p.id} p={p} onZero={openZeroModal} selected={selectedIds.has(p.id)} onToggleSelect={toggleSelect} />
               ))}
             </tbody>
           </table>
 
           <div className="card-list">
             {visibleProducts.map((p) => (
-              <ProductCard key={p.id} p={p} onZero={openZeroModal} />
+              <ProductCard key={p.id} p={p} onZero={openZeroModal} selected={selectedIds.has(p.id)} onToggleSelect={toggleSelect} />
             ))}
           </div>
 

@@ -15,8 +15,11 @@ function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [zeroCodes, setZeroCodes] = useState([]);
+  const [generating, setGenerating] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
 
-  useEffect(() => { loadSettings(); }, []);
+  useEffect(() => { loadSettings(); loadZeroCodes(); }, []);
 
   const loadSettings = async () => {
     try {
@@ -34,6 +37,48 @@ function AdminSettings() {
       console.error('Erreur chargement settings:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadZeroCodes = async () => {
+    try {
+      const data = await api.listZeroCodes();
+      setZeroCodes(data);
+    } catch (err) {
+      console.error('Erreur chargement codes:', err);
+    }
+  };
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      await api.generateZeroCode();
+      await loadZeroCodes();
+      showMsg('Nouveau code généré');
+    } catch (err) {
+      showMsg(err.error || 'Erreur lors de la génération', 'error');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleDeleteCode = async (id) => {
+    if (!confirm('Supprimer ce code ?')) return;
+    try {
+      await api.deleteZeroCode(id);
+      await loadZeroCodes();
+    } catch (err) {
+      showMsg(err.error || 'Erreur lors de la suppression', 'error');
+    }
+  };
+
+  const handleCopyCode = async (id, code) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 1500);
+    } catch {
+      showMsg('Impossible de copier', 'error');
     }
   };
 
@@ -134,6 +179,74 @@ function AdminSettings() {
           </button>
         </div>
       </form>
+
+      <div className="insert-form" style={{ marginTop: 32 }}>
+        <h2 style={{ marginBottom: 8, fontSize: 18 }}>Codes "Valider à 0" (usage unique)</h2>
+        <p style={{ marginBottom: 16, color: '#666', fontSize: 14 }}>
+          Génère un code aléatoire à 6 chiffres pour autoriser un magasin à valider un produit à 0. Chaque code n'est utilisable qu'une seule fois. Pour valider plusieurs produits, générez plusieurs codes.
+        </p>
+
+        <button type="button" className="btn btn-primary" onClick={handleGenerate} disabled={generating}>
+          {generating ? 'Génération...' : 'Générer un nouveau code'}
+        </button>
+
+        <div style={{ marginTop: 24 }}>
+          <h3 style={{ marginBottom: 12, fontSize: 16 }}>Codes actifs</h3>
+          {zeroCodes.filter(c => !c.used_at).length === 0 ? (
+            <p style={{ color: '#666', fontSize: 14 }}>Aucun code actif.</p>
+          ) : (
+            <table className="dashboard-table" style={{ width: '100%' }}>
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Généré le</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {zeroCodes.filter(c => !c.used_at).map(c => (
+                  <tr key={c.id}>
+                    <td style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 18, fontWeight: 'bold', letterSpacing: 2 }}>{c.code}</td>
+                    <td>{c.created_at}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button type="button" className="btn btn-secondary" style={{ marginRight: 8 }} onClick={() => handleCopyCode(c.id, c.code)}>
+                        {copiedId === c.id ? 'Copié !' : 'Copier'}
+                      </button>
+                      <button type="button" className="btn btn-danger" onClick={() => handleDeleteCode(c.id)}>Supprimer</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {zeroCodes.filter(c => c.used_at).length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            <h3 style={{ marginBottom: 12, fontSize: 16 }}>Historique des codes utilisés</h3>
+            <table className="dashboard-table" style={{ width: '100%' }}>
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Magasin</th>
+                  <th>Produit</th>
+                  <th>Utilisé le</th>
+                </tr>
+              </thead>
+              <tbody>
+                {zeroCodes.filter(c => c.used_at).map(c => (
+                  <tr key={c.id}>
+                    <td style={{ fontFamily: 'JetBrains Mono, monospace', color: '#999' }}>{c.code}</td>
+                    <td>{c.used_by_magasin_name || '—'}</td>
+                    <td>{c.used_for_product_label || '—'}</td>
+                    <td>{c.used_at}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
