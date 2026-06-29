@@ -18,8 +18,9 @@ function AdminInsert() {
   const fileInputRef = useRef(null);
 
   const loadProducts = async () => {
+    if (!selectedMagasin) { setProducts([]); return; }
     try {
-      const data = await api.getProducts();
+      const data = await api.getProducts(null, selectedMagasin);
       setProducts(data);
     } catch (err) {
       console.error('Erreur:', err);
@@ -27,12 +28,16 @@ function AdminInsert() {
   };
 
   useEffect(() => {
-    loadProducts();
     api.getMagasins().then(mags => {
       setMagasins(mags);
       if (mags.length === 1) setSelectedMagasin(String(mags[0].id));
     }).catch(() => {});
   }, []);
+
+  // Recharger la liste à chaque changement de magasin sélectionné
+  useEffect(() => {
+    loadProducts();
+  }, [selectedMagasin]);
 
   useLiveUpdates(
     (product) => {
@@ -196,7 +201,11 @@ function AdminInsert() {
         </div>
 
         {products.length === 0 ? (
-          <p className="empty-text">Aucun produit enregistré</p>
+          <p className="empty-text">
+            {selectedMagasin
+              ? 'Aucun produit enregistré pour ce magasin'
+              : 'Sélectionnez un magasin pour afficher ses produits'}
+          </p>
         ) : (
           <>
             {/* Tableau desktop */}
