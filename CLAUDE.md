@@ -414,6 +414,8 @@ docker compose up --build -d
 - Modal avec 4 paramètres : codeDu (défaut '0002'), codeAu (défaut '0000'), intitulé (défaut 'ST.MB'), séquence (défaut '01')
 - Format ligne : `TT{du2}{au2}{parkod}{qty sur 4 car.}  ;{date};1600;{intitule};;{codeDu};{codeAu}` + CRLF
 - Les 2 premiers caractères sont le **type de mouvement** : `TT` = transfert, `TR` = rajout de stock, `TS` = suppression de stock. Le gabarit de colonnes est identique quel que soit le type — un fichier `TR` sert donc de référence valide pour vérifier l'alignement d'un `TT`. Surstock n'émet que du `TT`
+- **PARKOD forcé à 8 caractères** (`padStart(8, '0').slice(0, 8)`) : > 8 → on coupe la **queue** ; < 8 → **zéros devant**. Jamais couper la tête : les 3 premiers caractères sont le CMARQ (même code marque qu'en tête du libellé — vérifié : 8 530 lignes concordent). L'export STKPERM applique déjà `substring(0, 8)`
+  - En base, **8 548 produits sur 8 573 ont un PARKOD à 10 caractères** : c'est la norme dans les imports, pas l'exception. Aucune collision après troncature (vérifié sur tous les magasins)
 - **Quantité cadrée à droite sur 4 caractères** (`padStart(4, ' ')`) : 1 chiffre = 3 espaces, 2 chiffres = 2 espaces, 3 chiffres = 1 espace, 4 chiffres = 0 espace
 - **Invariant** : le `;` tombe en colonne 21 sur toutes les lignes. Vérifié sur un fichier V accepté par WinDev (26 372 lignes, `;` en col. 21 partout). Un décalage d'une colonne fait lire à WinDev tous les champs suivants au mauvais endroit et fausse le stock
 - Quantité max 9999 (validée à la saisie magasin, `StoreList.jsx`) → le champ de 4 caractères ne peut pas déborder

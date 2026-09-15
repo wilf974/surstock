@@ -228,10 +228,19 @@ function AdminDashboard() {
     const lines = [];
     for (const p of filteredProducts) {
       if (!p.parkod || p.qty_sent === null || p.qty_sent === 0) continue;
-      // Quantite cadree a droite sur 4 caracteres : le ';' doit tomber en colonne 21
-      // sur toutes les lignes, sinon WinDev lit les champs suivants decales.
+      // Format a largeur fixe : le ';' doit tomber en colonne 21 sur TOUTES les
+      // lignes, sinon WinDev lit les champs suivants decales et fausse le stock.
+      //
+      // PARKOD force a 8 caracteres :
+      //   > 8 (cas majoritaire, imports a 10) : on coupe les caracteres de QUEUE.
+      //     Jamais ceux de tete : les 3 premiers sont le CMARQ (meme code marque
+      //     qu'en tete du libelle), et l'export STKPERM decompose deja
+      //     CMARQ/CCATEG/CPROD sur substring(0,8).
+      //   < 8 : zeros ajoutes DEVANT, comme le fait deja la ref XLSX (l.145).
+      // padStart avant slice : l'inverse laisserait un code court inchange.
+      const parkod8 = String(p.parkod).padStart(8, '0').slice(0, 8);
       const qty = String(p.qty_sent).padStart(4, ' ');
-      lines.push(`TT${du2}${au2}${p.parkod}${qty}  ;${dateLine};1600;${intitule};;${codeDu};${codeAu}`);
+      lines.push(`TT${du2}${au2}${parkod8}${qty}  ;${dateLine};1600;${intitule};;${codeDu};${codeAu}`);
     }
 
     const filename = `V${dateFile}${seq}.000393`;
