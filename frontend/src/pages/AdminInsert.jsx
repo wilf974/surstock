@@ -88,7 +88,10 @@ function AdminInsert() {
     if (!selectedMagasin) { showMsg('Veuillez sélectionner un magasin', 'error'); return; }
     try {
       const result = await api.addProductsBulk(items, parseInt(selectedMagasin));
-      showMsg(`${result.inserted} produit(s) importé(s)`);
+      const ecartes = result.rejetes
+        ? ` — ${result.rejetes} ligne(s) écartée(s) (EAN non numérique, en-tête collé)`
+        : '';
+      showMsg(`${result.inserted} produit(s) importé(s)${ecartes}`, result.rejetes ? 'warning' : 'success');
       setBulkText(''); setShowBulk(false); loadProducts();
     } catch (err) { showMsg('Erreur lors de l\'import', 'error'); }
   };
@@ -115,7 +118,10 @@ function AdminInsert() {
     if (!selectedMagasin) { showMsg('Veuillez sélectionner un magasin', 'error'); fileInputRef.current.value = ''; return; }
     try {
       const result = await api.addProductsBulk(items, parseInt(selectedMagasin));
-      showMsg(`${result.inserted} produit(s) importé(s) depuis le fichier XLSX`);
+      const ecartes = result.rejetes
+        ? ` — ${result.rejetes} ligne(s) écartée(s) (EAN non numérique, en-tête du fichier)`
+        : '';
+      showMsg(`${result.inserted} produit(s) importé(s) depuis le fichier XLSX${ecartes}`, result.rejetes ? 'warning' : 'success');
       loadProducts();
     } catch (err) { showMsg('Erreur lors de l\'import XLSX', 'error'); }
     fileInputRef.current.value = '';

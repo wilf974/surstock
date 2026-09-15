@@ -4,6 +4,19 @@ const { queryAll, queryOne, run } = require('../db');
 const { broadcast } = require('../events');
 const { getMagasinId, getRole } = require('./auth');
 
+// Un EAN est exclusivement numerique. Cette validation rejette la ligne
+// d'en-tete des fichiers XLSX ("Code EAN"), qui etait jusqu'ici inseree comme
+// un produit : 5 en base, un par magasin. Verifie sur les 8 578 produits de
+// production : tous ont un EAN de 13 chiffres, seules les 5 en-tetes echouent.
+// Retourne l'EAN normalise sur 13 chiffres, ou null si l'entree est invalide.
+function normaliserEan(brut) {
+  if (brut === null || brut === undefined) return null;
+  const ean = String(brut).trim();
+  if (!/^\d+$/.test(ean)) return null;
+  if (ean.length > 13) return null;
+  return ean.padStart(13, '0');
+}
+
 // GET /api/products - Liste tous les produits
 router.get('/', (req, res) => {
   const { status } = req.query;
@@ -97,11 +110,16 @@ router.post('/', (req, res) => {
     return res.status(400).json({ error: 'EAN, libellé et quantité sont requis' });
   }
 
+  const eanNormalise = normaliserEan(ean);
+  if (!eanNormalise) {
+    return res.status(400).json({ error: 'EAN invalide : uniquement des chiffres, 13 au maximum' });
+  }
+
   const qty = parseInt(qty_requested);
   const now = qty === 0 ? new Date().toISOString() : null;
   const result = run(
     'INSERT INTO products (ean, parkod, label, qty_requested, qty_sent, scanned_at, qty_received, received_at, magasin_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [ean.trim().padStart(13, '0'), parkod ? parkod.trim() : null, label.trim(), qty, qty === 0 ? 0 : null, now, qty === 0 ? 0 : null, now, magasinId]
+    [eanNormalise, parkod ? parkod.trim() : null, label.trim(), qty, qty === 0 ? 0 : null, now, qty === 0 ? 0 : null, now, magasinId]
   );
 
   const product = queryOne('SELECT * FROM products WHERE id = ?', [result.lastInsertRowid]);
@@ -119,19 +137,30 @@ router.post('/bulk', (req, res) => {
   }
 
   let inserted = 0;
+  const rejetes = [];
   for (const item of products) {
-    if (!item.ean || !item.label || item.qty_requested === undefined) continue;
+    if (!item.ean || !item.label || item.qty_requested === undefined) {
+      rejetes.push({ ean: item && item.ean ? String(item.ean) : '(vide)', motif: 'champ obligatoire manquant' });
+      continue;
+    }
+    const eanNormalise = normaliserEan(item.ean);
+    if (!eanNormalise) {
+      rejetes.push({ ean: String(item.ean), motif: 'EAN non numérique' });
+      continue;
+    }
     const qty = parseInt(item.qty_requested);
     const now = qty === 0 ? new Date().toISOString() : null;
     run(
       'INSERT INTO products (ean, parkod, label, qty_requested, qty_sent, scanned_at, qty_received, received_at, magasin_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [item.ean.trim().padStart(13, '0'), item.parkod ? item.parkod.trim() : null, item.label.trim(), qty, qty === 0 ? 0 : null, now, qty === 0 ? 0 : null, now, magasinId]
+      [eanNormalise, item.parkod ? item.parkod.trim() : null, item.label.trim(), qty, qty === 0 ? 0 : null, now, qty === 0 ? 0 : null, now, magasinId]
     );
     inserted++;
   }
 
   broadcast('products-changed', { action: 'reload' });
-  res.status(201).json({ inserted });
+  // Les lignes rejetees sont remontees, jamais ecartees en silence : un import
+  // partiel qui s'annonce complet est indetectable cote utilisateur.
+  res.status(201).json({ inserted, rejetes: rejetes.length, details: rejetes.slice(0, 10) });
 });
 
 // PATCH /api/products/export - Marquer des produits comme traités (exportés)
