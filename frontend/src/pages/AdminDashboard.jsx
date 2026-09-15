@@ -228,12 +228,10 @@ function AdminDashboard() {
     const lines = [];
     for (const p of filteredProducts) {
       if (!p.parkod || p.qty_sent === null || p.qty_sent === 0) continue;
-      const qty = p.qty_sent;
-      let espace;
-      if (qty < 10) espace = '   ';
-      else if (qty < 100) espace = '  ';
-      else espace = '';
-      lines.push(`TT${du2}${au2}${p.parkod}${espace}${qty}  ;${dateLine};1600;${intitule};;${codeDu};${codeAu}`);
+      // Quantite cadree a droite sur 4 caracteres : le ';' doit tomber en colonne 21
+      // sur toutes les lignes, sinon WinDev lit les champs suivants decales.
+      const qty = String(p.qty_sent).padStart(4, ' ');
+      lines.push(`TT${du2}${au2}${p.parkod}${qty}  ;${dateLine};1600;${intitule};;${codeDu};${codeAu}`);
     }
 
     const filename = `V${dateFile}${seq}.000393`;

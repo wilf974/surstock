@@ -412,8 +412,11 @@ docker compose up --build -d
 
 ### Export Transfert (format WinDev)
 - Modal avec 4 paramètres : codeDu (défaut '0002'), codeAu (défaut '0000'), intitulé (défaut 'ST.MB'), séquence (défaut '01')
-- Format ligne : `TT{du2}{au2}{parkod}{espaces}{qty}  ;{date};1600;{intitule};;{codeDu};{codeAu}` + CRLF
-- Espaces quantité : <10 = 3 espaces, <100 = 2 espaces, >=100 = 0
+- Format ligne : `TT{du2}{au2}{parkod}{qty sur 4 car.}  ;{date};1600;{intitule};;{codeDu};{codeAu}` + CRLF
+- Les 2 premiers caractères sont le **type de mouvement** : `TT` = transfert, `TR` = rajout de stock, `TS` = suppression de stock. Le gabarit de colonnes est identique quel que soit le type — un fichier `TR` sert donc de référence valide pour vérifier l'alignement d'un `TT`. Surstock n'émet que du `TT`
+- **Quantité cadrée à droite sur 4 caractères** (`padStart(4, ' ')`) : 1 chiffre = 3 espaces, 2 chiffres = 2 espaces, 3 chiffres = 1 espace, 4 chiffres = 0 espace
+- **Invariant** : le `;` tombe en colonne 21 sur toutes les lignes. Vérifié sur un fichier V accepté par WinDev (26 372 lignes, `;` en col. 21 partout). Un décalage d'une colonne fait lire à WinDev tous les champs suivants au mauvais endroit et fausse le stock
+- Quantité max 9999 (validée à la saisie magasin, `StoreList.jsx`) → le champ de 4 caractères ne peut pas déborder
 - codeDu = code CMAG du magasin sélectionné
 - Nom fichier : `V{DDMMYY}{sequence zero-padded 2}.000393`
 
@@ -466,7 +469,7 @@ docker compose up --build -d
 ## Déploiement
 - **URL** : https://sur-stock.myorigines.tech
 - **VPS** : 51.254.132.46, user `debian`
-- **Chemin VPS** : `/home/debian/surstock`
+- **Chemin VPS** : `/home/debian/apps/surstock`
 - **Reverse proxy** : Traefik v2.11 sur réseau Docker `myorigines-network`
 - **Certificat SSL** : Let's Encrypt automatique via Traefik
 - **IMPORTANT** : ne jamais casser les autres projets du VPS (23+ conteneurs)
@@ -474,17 +477,17 @@ docker compose up --build -d
 ### Mise à jour
 ```bash
 git push origin main
-ssh debian@51.254.132.46 "cd /home/debian/surstock && git pull && docker compose up --build -d"
+ssh debian@51.254.132.46 "cd /home/debian/apps/surstock && git pull && docker compose up --build -d"
 ```
 
 ### Backup BDD avant mise à jour
 ```bash
-ssh debian@51.254.132.46 "cd /home/debian/surstock && docker compose exec surstock cp /app/backend/data/surstock.db /app/backend/data/surstock.db.bak.$(date +%Y%m%d)"
+ssh debian@51.254.132.46 "cd /home/debian/apps/surstock && docker compose exec surstock cp /app/backend/data/surstock.db /app/backend/data/surstock.db.bak.$(date +%Y%m%d)"
 ```
 
 ### Vérification post-déploiement
 ```bash
-ssh debian@51.254.132.46 "cd /home/debian/surstock && docker compose ps && docker compose logs --tail=5"
+ssh debian@51.254.132.46 "cd /home/debian/apps/surstock && docker compose ps && docker compose logs --tail=5"
 ```
 
 ## Variables d'environnement (docker-compose.yml)
